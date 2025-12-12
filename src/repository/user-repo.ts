@@ -13,21 +13,23 @@ export class UserRepository {
 
   async createOrUpdate(data: {
     telegramId: number;
-    username?: string | undefined;
-    firstName?: string | undefined;
+    username?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
   }): Promise<User> {
     const [user] = await User.upsert({
       telegramId: data.telegramId,
       username: data.username ?? null,
       firstName: data.firstName ?? null,
+      lastName: data.lastName ?? null,
     });
     return user;
   }
 
   async create(data: {
     telegramId: number;
-    username?: string;
-    firstName?: string;
+    username?: string | null;
+    firstName?: string | null;
   }): Promise<User> {
     return await User.create(data);
   }

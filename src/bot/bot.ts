@@ -5,7 +5,11 @@ import {
 } from "@grammyjs/conversations";
 import { RedisAdapter } from "@grammyjs/storage-redis";
 import { redis } from "../config/redis.ts";
+import { handleStart } from "./utils/start.ts";
 
+/**
+ * bot initialisation
+ */
 export const bot = new Bot<
   Context & SessionFlavor<{}> & ConversationFlavor<Context & SessionFlavor<{}>>
 >(process.env.TELEGRAM_BOT_TOKEN!);
@@ -21,10 +25,6 @@ bot.use(
 );
 
 bot.use(conversations());
-
-bot.use(async (ctx, next) => {
-  await next();
-});
 
 bot.catch((err) => {
   const ctx = err.ctx;

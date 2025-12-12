@@ -12,7 +12,6 @@ export class User extends Model<
   InferAttributes<User>,
   InferCreationAttributes<User>
 > {
-  declare id: CreationOptional<number>;
   declare telegramId: number;
   declare username: string | null;
   declare firstName: string | null;
@@ -23,14 +22,10 @@ export class User extends Model<
 
 User.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-    },
     telegramId: {
       type: DataTypes.BIGINT,
       allowNull: false,
+      primaryKey: true,
       unique: true,
     },
     username: {
@@ -55,3 +50,5 @@ User.init(
     timestamps: true,
   }
 );
+
+User.sync({ force: false });

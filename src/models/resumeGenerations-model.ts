@@ -66,3 +66,5 @@ ResumeGeneration.init(
     updatedAt: false,
   }
 );
+
+ResumeGeneration.sync({force:false});

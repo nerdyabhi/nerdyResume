@@ -88,3 +88,5 @@ UserProfile.init(
     createdAt: false,
   }
 );
+
+UserProfile.sync({ force: false });
