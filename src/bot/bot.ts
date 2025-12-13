@@ -15,7 +15,7 @@ export const bot = new Bot<
 >(process.env.TELEGRAM_BOT_TOKEN!);
 
 interface SessionData {
-  threadId?: string | undefined; // LangGraph conversation thread
+  threadId?: string | undefined;
 }
 
 export type MyContext = Context &

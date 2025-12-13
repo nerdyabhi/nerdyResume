@@ -45,8 +45,6 @@ export async function handleStart(ctx: Context) {
   }
 }
 
-// src/bot/handlers/message-handler.ts
-
 export async function handleMessage(ctx: MyContext) {
   if (!ctx.message?.text || !ctx.from) return;
 
@@ -54,10 +52,10 @@ export async function handleMessage(ctx: MyContext) {
   const userMessage = ctx.message.text;
 
   let threadId = ctx.session.threadId;
+
   if (!threadId) {
     threadId = `user_${userId}`;
     ctx.session.threadId = threadId;
-    console.log(`🆕 New conversation thread: ${threadId}`);
   }
 
   const config = {
@@ -67,9 +65,8 @@ export async function handleMessage(ctx: MyContext) {
   await ctx.replyWithChatAction("typing");
 
   try {
-    console.log(`📨 [${userId}] "${userMessage}"`);
+    console.log(`📨 [${userId}] : "${userMessage}"`);
 
-    // ⭐ Stream agent execution
     const stream = await agent.stream(
       {
         userId,
@@ -84,28 +81,23 @@ export async function handleMessage(ctx: MyContext) {
       if ("__interrupt__" in event && event.__interrupt__) {
         const interrupts = event.__interrupt__;
 
-        // Ensure interrupts is iterable (array or similar)
         if (Array.isArray(interrupts)) {
           for (const interrupt of interrupts) {
-            console.log(`⏸ Interrupt: ${interrupt.value.substring(0, 50)}...`);
-            await ctx.reply(interrupt.value);
+            console.log(`⏸ Interrupt from start.ts file: ${interrupt.value}`);
+            await ctx.reply(interrupt.value, { parse_mode: "Markdown" });
             hasResponse = true;
           }
         }
 
-        // Graph paused, waiting for user's next message
         return;
       }
 
-      // Handle final messages (profile saved)
       if (event.save?.messages) {
         for (const msg of event.save.messages) {
-          console.log("✅ Conversation complete");
           await ctx.reply(msg);
           hasResponse = true;
         }
 
-        // Clear thread after completion
         ctx.session.threadId = undefined;
         return;
       }

@@ -86,7 +86,7 @@ export const StateAnnotation = Annotation.Root({
   }),
   profile: Annotation<Profile>,
   validation: Annotation<Validation>,
-  isComplete: Annotation<boolean>,
+  isComplete: Annotation<boolean>
 });
 
 export type AgentState = typeof StateAnnotation.State;
