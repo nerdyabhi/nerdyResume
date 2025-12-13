@@ -10,8 +10,6 @@ export async function handleStart(ctx: Context) {
     const firstName = ctx.from?.first_name || null;
     const lastName = ctx.from?.last_name || null;
 
-    // console.dir(ctx, { depth: null });
-
     if (!telegramId) {
       await ctx.reply("Unable to identify user. Please try again.");
       return;
@@ -26,7 +24,6 @@ export async function handleStart(ctx: Context) {
 
     console.log(`Updated user : ${firstName} ${lastName} in db`);
 
-    // Welcome message
     await ctx.reply(
       `🎯 *Welcome to NerdyResume, ${firstName}!*\n\n` +
         `I'm your intelligent resume generator that creates *tailored resumes* for any job opportunity.\n\n` +
@@ -65,53 +62,49 @@ export async function handleMessage(ctx: MyContext) {
   await ctx.replyWithChatAction("typing");
 
   try {
-    console.log(`📨 [${userId}] : "${userMessage}"`);
+    console.log(`📨 [${userId}]: "${userMessage}"`);
 
     const stream = await agent.stream(
-      {
-        userId,
-        messages: [userMessage],
-      },
+      { userId, messages: [userMessage] },
       config
     );
 
-    let hasResponse = false;
-
     for await (const event of stream) {
-      if ("__interrupt__" in event && event.__interrupt__) {
-        const interrupts = event.__interrupt__;
+      console.log("📦 Event:", Object.keys(event));
 
-        if (Array.isArray(interrupts)) {
-          for (const interrupt of interrupts) {
-            console.log(`⏸ Interrupt from start.ts file: ${interrupt.value}`);
-            await ctx.reply(interrupt.value, { parse_mode: "Markdown" });
-            hasResponse = true;
-          }
+      // Handle interrupts - this is where the summary will be shown
+      if (
+        "__interrupt__" in event &&
+        event.__interrupt__ &&
+        Array.isArray(event.__interrupt__)
+      ) {
+        for (const interruptData of event.__interrupt__) {
+          console.log(
+            "⏸️ Interrupt value:",
+            interruptData.value.substring(0, 100)
+          );
+          await ctx.reply(interruptData.value, { parse_mode: "Markdown" });
         }
-
-        return;
+        continue;
       }
 
-      if (event.save?.messages) {
-        for (const msg of event.save.messages) {
-          await ctx.reply(msg);
-          hasResponse = true;
+      if (event.ask) {
+        const message = event.ask.messages?.[0];
+        if (message) {
+          await ctx.reply(message);
         }
-
-        ctx.session.threadId = undefined;
-        return;
       }
-    }
 
-    // Fallback
-    if (!hasResponse) {
-      await ctx.reply("Processing your information...");
+      if (event.save) {
+        const message = event.save.messages?.[0];
+        if (message) {
+          await ctx.reply(message, { parse_mode: "Markdown" });
+          ctx.session.threadId = undefined; // Clear thread after save
+        }
+      }
     }
   } catch (error) {
-    console.error("❌ Agent error:", error);
-    await ctx.reply(
-      "Sorry, something went wrong. Please try /start to restart."
-    );
-    ctx.session.threadId = undefined;
+    console.error("❌ Error:", error);
+    await ctx.reply("Sorry, something went wrong. Please try again.");
   }
 }

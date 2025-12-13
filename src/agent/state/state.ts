@@ -82,11 +82,28 @@ export type Validation = z.infer<typeof ValidationSchema>;
 export const StateAnnotation = Annotation.Root({
   userId: Annotation<number>,
   messages: Annotation<string[]>({
-    reducer: (a, b) => a.concat(b),
+    reducer: (state, update) => state.concat(update),
+    default: () => [],
   }),
-  profile: Annotation<Profile>,
-  validation: Annotation<Validation>,
-  isComplete: Annotation<boolean>
+  validation: Annotation<z.infer<typeof ValidationSchema> | null>({
+    reducer: (state, update) => update ?? state,
+    default: () => null,
+  }),
+  profile: Annotation<z.infer<typeof ProfileSchema> | null>({
+    reducer: (state, update) => update ?? state,
+    default: () => null,
+  }),
+  isComplete: Annotation<boolean>({
+    reducer: (state, update) => update ?? state,
+    default: () => false,
+  }),
+  confirmationSummary: Annotation<string | null>({
+    reducer: (state, update) => update ?? state,
+    default: () => null,
+  }),
+  needsConfirmation: Annotation<boolean>({
+    reducer: (state, update) => update ?? state,
+    default: () => false,
+  }),
 });
-
 export type AgentState = typeof StateAnnotation.State;

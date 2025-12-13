@@ -9,7 +9,7 @@ export const groqLLM = new ChatGroq({
 });
 
 export const openAiLLM = new AzureChatOpenAI({
-  temperature: 0,
+  temperature: 0.2,
   azureOpenAIApiKey: process.env.AZURE_OPENAI_API_KEY!,
   azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_DEPLOYMENT!,
   azureOpenAIApiVersion: "2024-12-01-preview",
