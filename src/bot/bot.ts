@@ -5,7 +5,7 @@ import {
 } from "@grammyjs/conversations";
 import { RedisAdapter } from "@grammyjs/storage-redis";
 import { redis } from "../config/redis.ts";
-import { handleStart } from "./utils/start.ts";
+import { handleStart } from "./handlers/handleStart.ts";
 
 /**
  * bot initialisation

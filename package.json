@@ -25,6 +25,7 @@
     "grammy": "^1.38.4",
     "ioredis": "^5.8.2",
     "langchain": "^1.1.5",
+    "pdf-parse": "^2.4.5",
     "sequelize": "^6.37.7",
     "typescript": "^5.9.3",
     "zod": "^4.1.13"
