@@ -1,5 +1,7 @@
 import { Context } from "grammy";
 import { userRepository } from "../../repository/user-repo.ts";
+import { type MyContext } from "../bot.ts";
+import { agent } from "../../agent/index.ts";
 
 export async function handleStart(ctx: Context) {
   try {
@@ -40,5 +42,84 @@ export async function handleStart(ctx: Context) {
   } catch (error) {
     console.error("Error in /start:", error);
     await ctx.reply("Something went wrong. Please try again.");
+  }
+}
+
+// src/bot/handlers/message-handler.ts
+
+export async function handleMessage(ctx: MyContext) {
+  if (!ctx.message?.text || !ctx.from) return;
+
+  const userId = ctx.from.id;
+  const userMessage = ctx.message.text;
+
+  let threadId = ctx.session.threadId;
+  if (!threadId) {
+    threadId = `user_${userId}`;
+    ctx.session.threadId = threadId;
+    console.log(`🆕 New conversation thread: ${threadId}`);
+  }
+
+  const config = {
+    configurable: { thread_id: threadId },
+  };
+
+  await ctx.replyWithChatAction("typing");
+
+  try {
+    console.log(`📨 [${userId}] "${userMessage}"`);
+
+    // ⭐ Stream agent execution
+    const stream = await agent.stream(
+      {
+        userId,
+        messages: [userMessage],
+      },
+      config
+    );
+
+    let hasResponse = false;
+
+    for await (const event of stream) {
+      if ("__interrupt__" in event && event.__interrupt__) {
+        const interrupts = event.__interrupt__;
+
+        // Ensure interrupts is iterable (array or similar)
+        if (Array.isArray(interrupts)) {
+          for (const interrupt of interrupts) {
+            console.log(`⏸ Interrupt: ${interrupt.value.substring(0, 50)}...`);
+            await ctx.reply(interrupt.value);
+            hasResponse = true;
+          }
+        }
+
+        // Graph paused, waiting for user's next message
+        return;
+      }
+
+      // Handle final messages (profile saved)
+      if (event.save?.messages) {
+        for (const msg of event.save.messages) {
+          console.log("✅ Conversation complete");
+          await ctx.reply(msg);
+          hasResponse = true;
+        }
+
+        // Clear thread after completion
+        ctx.session.threadId = undefined;
+        return;
+      }
+    }
+
+    // Fallback
+    if (!hasResponse) {
+      await ctx.reply("Processing your information...");
+    }
+  } catch (error) {
+    console.error("❌ Agent error:", error);
+    await ctx.reply(
+      "Sorry, something went wrong. Please try /start to restart."
+    );
+    ctx.session.threadId = undefined;
   }
 }

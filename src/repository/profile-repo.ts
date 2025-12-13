@@ -28,7 +28,9 @@ export class ProfileRepository {
     return await UserProfile.create({
       userId,
       experiences: [],
+      education: [],
       skills: [],
+      achievements: [],
       projects: [],
       isComplete: false,
     });
@@ -175,6 +177,58 @@ export class ProfileRepository {
       projectCount: profile.projects.length,
       isComplete: profile.isComplete,
     };
+  }
+
+  async saveCompleteProfile(
+    userId: number,
+    profileData: any
+  ): Promise<UserProfile> {
+    let profile = await this.getByUserId(userId);
+
+    if (!profile) {
+      profile = await this.create(userId);
+    }
+
+    // Map the extracted profile to database schema
+    const updateData: any = {
+      fullName: profileData.name,
+      email: profileData.email,
+      phone: profileData.phone,
+      skills: profileData.skills || [],
+      achievements: profileData.achievements || [],
+      isComplete: true,
+    };
+
+    // Map experience
+    if (profileData.experience && Array.isArray(profileData.experience)) {
+      updateData.experiences = profileData.experience.map((exp: any) => ({
+        company: exp.company,
+        position: exp.role,
+        startDate: exp.duration?.split(" - ")[0] || exp.duration,
+        endDate: exp.duration?.split(" - ")[1] || null,
+        description: exp.description,
+        technologies: [],
+      }));
+    }
+
+    // Map education
+    if (profileData.education && Array.isArray(profileData.education)) {
+      updateData.education = profileData.education;
+    }
+
+    // Map profile links
+    if (profileData.profileLinks) {
+      updateData.profileLinks = profileData.profileLinks;
+      // Also set legacy fields for backward compatibility
+      if (profileData.profileLinks.github) {
+        updateData.githubUrl = profileData.profileLinks.github;
+      }
+      if (profileData.profileLinks.linkedin) {
+        updateData.linkedinUrl = profileData.profileLinks.linkedin;
+      }
+    }
+
+    return await profile.update(updateData);
   }
 }
 

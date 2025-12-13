@@ -14,6 +14,14 @@ export const bot = new Bot<
   Context & SessionFlavor<{}> & ConversationFlavor<Context & SessionFlavor<{}>>
 >(process.env.TELEGRAM_BOT_TOKEN!);
 
+interface SessionData {
+  threadId?: string | undefined; // LangGraph conversation thread
+}
+
+export type MyContext = Context &
+  SessionFlavor<SessionData> &
+  ConversationFlavor<Context & SessionFlavor<SessionData>>;
+
 bot.use(
   session({
     initial: () => ({}),

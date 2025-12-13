@@ -26,6 +26,24 @@ export interface Project {
   endDate?: string;
 }
 
+export interface ProfileLinks {
+  github?: string;
+  leetcode?: string;
+  hackerrank?: string;
+  huggingface?: string;
+  geeksforgeeks?: string;
+  kaggle?: string;
+  linkedin?: string;
+  portfolio?: string;
+}
+
+export interface Education {
+  institution: string;
+  degree: string;
+  duration: string;
+  description?: string;
+}
+
 export class UserProfile extends Model<
   InferAttributes<UserProfile>,
   InferCreationAttributes<UserProfile>
@@ -37,8 +55,11 @@ export class UserProfile extends Model<
   declare phone: string | null;
   declare summary: string | null;
   declare experiences: Experience[];
+  declare education: Education[];
   declare skills: string[];
+  declare achievements: string[];
   declare projects: Project[];
+  declare profileLinks: ProfileLinks | null;
   declare linkedinUrl: string | null;
   declare githubUrl: string | null;
   declare isComplete: boolean;
@@ -53,7 +74,7 @@ UserProfile.init(
       autoIncrement: true,
     },
     userId: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.BIGINT,
       allowNull: false,
     },
     fullName: DataTypes.STRING(255),
@@ -64,13 +85,25 @@ UserProfile.init(
       type: DataTypes.JSONB,
       defaultValue: [],
     },
+    education: {
+      type: DataTypes.JSONB,
+      defaultValue: [],
+    },
     skills: {
+      type: DataTypes.ARRAY(DataTypes.TEXT),
+      defaultValue: [],
+    },
+    achievements: {
       type: DataTypes.ARRAY(DataTypes.TEXT),
       defaultValue: [],
     },
     projects: {
       type: DataTypes.JSONB,
       defaultValue: [],
+    },
+    profileLinks: {
+      type: DataTypes.JSONB,
+      defaultValue: null,
     },
     linkedinUrl: DataTypes.STRING(500),
     githubUrl: DataTypes.STRING(500),
@@ -89,4 +122,4 @@ UserProfile.init(
   }
 );
 
-UserProfile.sync({ force: false });
+UserProfile.sync({ alter: true });

@@ -1,9 +1,9 @@
+import { agent } from "./agent/index.ts";
+import { UserProfile } from "./models/profile-model.ts";
 import { bot } from "./bot/index.ts";
 import { openAiLLM } from "./config/llm.ts";
-
+import "dotenv/config";
 const start = async () => {
-  const ans = await openAiLLM.invoke("capital of india?");
-  console.log(ans);
   await bot.start({
     onStart: (botInfo) => {
       console.log(`✅ Bot @${botInfo.username} is running!`);

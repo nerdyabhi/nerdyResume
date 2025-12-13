@@ -1,7 +1,7 @@
 // src/config/llm.ts
 import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
 import { ChatGroq } from "@langchain/groq";
-
+import "dotenv/config";
 export const groqLLM = new ChatGroq({
   model: "llama-3.1-8b-instant",
   temperature: 0,
