@@ -1,5 +1,6 @@
 import { type MyContext } from "../bot.ts";
 import { agent } from "../../agent/index.ts";
+import { HumanMessage } from "@langchain/core/messages";
 
 export async function handleMessage(ctx: MyContext) {
   if (!ctx.message?.text || !ctx.from) return;
@@ -15,7 +16,7 @@ export async function handleMessage(ctx: MyContext) {
   }
 
   const config = {
-    configurable: { thread_id: threadId },
+    configurable: { thread_id: threadId, userId: userId },
   };
 
   await ctx.replyWithChatAction("typing");
@@ -24,137 +25,72 @@ export async function handleMessage(ctx: MyContext) {
     console.log(`📨 [${userId}]: "${userMessage}"`);
 
     const stream = await agent.stream(
-      { userId, messages: [userMessage] },
+      {
+        messages: [new HumanMessage(userMessage)],
+      },
       config
     );
 
-    let statusMessage = null; // Track the status message for editing
+    let agentResponse = "";
+    let isCallingTool = false;
 
     for await (const event of stream) {
       console.log("📦 Event:", Object.keys(event));
 
-      // Update status based on which node is running
-      if (event.validate && ctx.chat) {
-        if (!statusMessage) {
-          statusMessage = await ctx.reply("🔍 Validating your resume...");
-        } else {
-          try {
-            await ctx.api.editMessageText(
-              ctx.chat.id,
-              statusMessage.message_id,
-              "Validating your Information..."
-            );
-          } catch (error) {
-            console.error("Edit failed:", error);
-          }
-        }
-      }
+      // Agent is generating a response or calling a tool
+      if (event.agent?.messages) {
+        const messagesArray = Array.isArray(event.agent.messages)
+          ? event.agent.messages
+          : Object.values(event.agent.messages);
+        const lastMsg = messagesArray[messagesArray.length - 1];
 
-      if (event.ask && ctx.chat) {
-        if (!statusMessage) {
-          statusMessage = await ctx.reply("❓ Analyzing information...");
-        } else {
-          try {
-            await ctx.api.editMessageText(
-              ctx.chat.id,
-              statusMessage.message_id,
-              "❓ Analyzing information..."
-            );
-          } catch (error) {
-            console.error("Edit failed:", error);
-          }
-        }
-      }
-
-      if (event.confirm && ctx.chat) {
-        if (!statusMessage) {
-          statusMessage = await ctx.reply("📋 Generating summary...");
-        } else {
-          try {
-            await ctx.api.editMessageText(
-              ctx.chat.id,
-              statusMessage.message_id,
-              " Generating Profile summary..."
-            );
-          } catch (error) {
-            console.error("Edit failed:", error);
-          }
-        }
-      }
-
-      if (event.save && ctx.chat) {
-        if (!statusMessage) {
-          statusMessage = await ctx.reply("💾 Saving your profile...");
-        } else {
-          try {
-            await ctx.api.editMessageText(
-              ctx.chat.id,
-              statusMessage.message_id,
-              "💾 Saving your profile..."
-            );
-          } catch (error) {
-            console.error("Edit failed:", error);
-          }
-        }
-      }
-
-      // Handle interrupts
-      if (
-        "__interrupt__" in event &&
-        event.__interrupt__ &&
-        Array.isArray(event.__interrupt__)
-      ) {
-        // Delete status message before showing interrupt
-        if (statusMessage && ctx.chat) {
-          try {
-            await ctx.api.deleteMessage(ctx.chat.id, statusMessage.message_id);
-            statusMessage = null;
-          } catch (error) {
-            console.error("Delete failed:", error);
-          }
+        // Check if it's a text response
+        if (lastMsg.content && typeof lastMsg.content === "string") {
+          agentResponse = lastMsg.content;
         }
 
-        for (const interruptData of event.__interrupt__) {
-          console.log(
-            "⏸️ Interrupt value:",
-            interruptData.value.substring(0, 100)
+        // Check if agent is calling save_profile tool
+        if (lastMsg.tool_calls?.length > 0) {
+          const saveToolCall = lastMsg.tool_calls.find(
+            (tc: any) => tc.name === "save_profile"
           );
-          await ctx.reply(interruptData.value, { parse_mode: "Markdown" });
+
+          if (saveToolCall) {
+            isCallingTool = true;
+            await ctx.reply("💾 Saving your profile...");
+            console.log(
+              "🔧 Agent calling save_profile with:",
+              saveToolCall.args
+            );
+
+            // CRITICAL: Inject userId into tool args if not present
+            // The agent doesn't know the userId, we need to provide it
+            saveToolCall.args.userId = userId;
+          }
         }
-        continue;
       }
 
-      // Handle save completion
-      if (event.save) {
-        const message = event.save.messages?.[0];
-        if (message) {
-          // Delete status message
-          if (statusMessage && ctx.chat) {
-            try {
-              await ctx.api.deleteMessage(
-                ctx.chat.id,
-                statusMessage.message_id
-              );
-              statusMessage = null;
-            } catch (error) {
-              console.error("Delete failed:", error);
-            }
-          }
+      // Tool has finished executing
+      if (event.tools?.messages) {
+        const messagesArray = Array.isArray(event.tools.messages)
+          ? event.tools.messages
+          : Object.values(event.tools.messages);
+        const toolResult = messagesArray[0].content as string;
 
-          // Send final success message
-          await ctx.reply(message, { parse_mode: "Markdown" });
-          ctx.session.threadId = undefined;
-        }
+        console.log("✅ Tool result:", toolResult);
+
+        // Send the success message
+        await ctx.reply(toolResult, { parse_mode: "Markdown" });
+
+        // Clear thread after successful save
+        ctx.session.threadId = undefined;
+        return;
       }
     }
 
-    // Clean up status message if stream ends without save
-    if (statusMessage && ctx.chat) {
-      try {
-        await ctx.api.deleteMessage(ctx.chat.id, statusMessage.message_id);
-      } catch (error) {
-        console.error("Cleanup delete failed:", error);
-      }
+    // If we got a text response (not a tool call), send it
+    if (agentResponse && !isCallingTool) {
+      await ctx.reply(agentResponse, { parse_mode: "Markdown" });
     }
   } catch (error) {
     console.error("❌ Error:", error);

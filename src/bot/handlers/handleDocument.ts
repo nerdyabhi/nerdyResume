@@ -1,6 +1,7 @@
 import { type MyContext } from "../bot.ts";
 import { agent } from "../../agent/index.ts";
 import { PDFParse } from "pdf-parse";
+import { HumanMessage } from "@langchain/core/messages";
 
 export const handleDocument = async (ctx: MyContext) => {
   if (!ctx.message || !ctx.from || !ctx.message.document) return;
@@ -28,7 +29,7 @@ export const handleDocument = async (ctx: MyContext) => {
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      console.log("Recieved buffer");
+      console.log("Received buffer");
 
       // Parse PDF - v2 API uses class instantiation
       const parser = new PDFParse({ data: buffer });
@@ -72,19 +73,112 @@ export const handleDocument = async (ctx: MyContext) => {
 
       // Feed to your agent
       const userId = ctx.from.id;
-      const threadId = { configurable: { thread_id: userId.toString() } };
+      let threadId = `user_${userId}`;
 
-      await agent.invoke(
-        {
-          messages: [
-            `Here's my resume information from PDF:\n\n${extractedText}`,
-          ],
-          userId,
+      if (!threadId) throw new Error("ThreadId not found!!!");
+
+      const config = {
+        configurable: {
+          thread_id: threadId.toString(),
+          userId: userId.toString(),
         },
-        threadId
-      );
+      };
+
+      await ctx.replyWithChatAction("typing");
+
+      try {
+        const stream = await agent.stream(
+          {
+            messages: [new HumanMessage(extractedText)],
+          },
+          config
+        );
+
+        let agentResponse = "";
+        let isCallingTool = false;
+        let hasReplied = false;
+
+        for await (const event of stream) {
+          console.log("📦 Event:", JSON.stringify(Object.keys(event)));
+          console.log("📦 Full Event:", JSON.stringify(event, null, 2));
+
+          // Agent is generating a response or calling a tool
+          if (event.agent?.messages) {
+            const messagesArray = Array.isArray(event.agent.messages)
+              ? event.agent.messages
+              : Object.values(event.agent.messages);
+            const lastMsg = messagesArray[messagesArray.length - 1];
+
+            console.log("🤖 Agent message:", {
+              type: lastMsg.constructor.name,
+              hasContent: !!lastMsg.content,
+              hasToolCalls: !!lastMsg.tool_calls?.length,
+            });
+
+            // Check if it's a text response
+            if (lastMsg.content && typeof lastMsg.content === "string") {
+              agentResponse = lastMsg.content;
+              console.log(
+                "💬 Agent response:",
+                agentResponse.substring(0, 100)
+              );
+            }
+
+            // Check if agent is calling save_profile tool
+            if (lastMsg.tool_calls?.length > 0) {
+              const saveToolCall = lastMsg.tool_calls.find(
+                (tc: any) => tc.name === "save_profile"
+              );
+
+              if (saveToolCall) {
+                isCallingTool = true;
+                if (!hasReplied) {
+                  await ctx.reply("💾 Saving your profile...");
+                  hasReplied = true;
+                }
+                console.log(
+                  "🔧 Agent calling save_profile with:",
+                  saveToolCall.args
+                );
+              }
+            }
+          }
+
+          // Tool has finished executing
+          if (event.tools?.messages) {
+            const messagesArray = Array.isArray(event.tools.messages)
+              ? event.tools.messages
+              : Object.values(event.tools.messages);
+            const toolResult = messagesArray[0].content as string;
+
+            console.log("✅ Tool result:", toolResult);
+
+            // Send the success message
+            await ctx.reply(toolResult, { parse_mode: "Markdown" });
+
+            // Clear thread after successful save
+            ctx.session.threadId = undefined;
+            return;
+          }
+        }
+
+        // If we got a text response (not a tool call), send it
+        if (agentResponse && !isCallingTool && !hasReplied) {
+          await ctx.reply(agentResponse, { parse_mode: "Markdown" });
+        } else if (!hasReplied) {
+          // Fallback if no response was generated
+          await ctx.reply(
+            "✅ I've received your resume and will process it. Please provide any missing information if I ask."
+          );
+        }
+      } catch (error) {
+        console.error("❌ Agent error:", error);
+        await ctx.reply(
+          "❌ Sorry, there was an error processing your PDF. Please try again or send your information as text messages."
+        );
+      }
     } catch (error) {
-      console.error("❌ Error processing PDF:", error);
+      console.error("❌ PDF parsing error:", error);
       await ctx.reply(
         "❌ Sorry, there was an error processing your PDF. Please try again or send your information as text messages."
       );
