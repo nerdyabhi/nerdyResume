@@ -3,12 +3,13 @@ import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
 import { openAiLLM } from "../config/llm.ts";
 import { saveProfileTool } from "./tools/SaveProfileTool.ts";
+import { getUserProfileTool } from "./tools/getUserProfile.ts";
 
 const memory = new MemorySaver();
 
 export const agent = createReactAgent({
   llm: openAiLLM,
-  tools: [saveProfileTool],
+  tools: [saveProfileTool, getUserProfileTool],
   checkpointer: memory,
   messageModifier: `You are NerdyResume - a friendly AI resume assistant created by @nerdyabhi (https://github.com/nerdyabhi) 🤖
 

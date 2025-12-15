@@ -1,6 +1,7 @@
 import { type MyContext } from "../bot.ts";
 import { agent } from "../../agent/index.ts";
 import { HumanMessage } from "@langchain/core/messages";
+import { mem0 } from "../../config/memory.ts";
 
 export async function handleMessage(ctx: MyContext) {
   if (!ctx.message?.text || !ctx.from) return;
@@ -86,6 +87,23 @@ export async function handleMessage(ctx: MyContext) {
         ctx.session.threadId = undefined;
         return;
       }
+    }
+
+    if (agentResponse) {
+      // 1. Reply immediately
+      await ctx.reply(agentResponse, { parse_mode: "Markdown" });
+
+      mem0
+        .add(
+          [
+            { role: "user", content: userMessage },
+            { role: "assistant", content: agentResponse },
+          ],
+          { userId: userId.toString() }
+        )
+        .catch((err) => {
+          console.error("Memory save error:", err);
+        });
     }
 
     // If we got a text response (not a tool call), send it
