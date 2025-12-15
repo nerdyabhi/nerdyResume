@@ -36,6 +36,6 @@ Use this tool when:
 - You need to verify if profile exists before suggesting actions
 
 This returns comprehensive profile data including work experience, skills, education, projects, achievements, and profile links.`,
-    schema: z.object({}), // No input needed - userId comes from config
+    schema: z.object({}), // 
   }
 );

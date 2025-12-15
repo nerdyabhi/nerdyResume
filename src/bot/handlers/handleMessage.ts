@@ -33,21 +33,21 @@ export async function handleMessage(ctx: MyContext) {
     );
 
     let agentResponse = "";
-    let isCallingTool = false;
+    let shouldSaveMemory = false;
+    let profileSaveSuccess = false;
 
     for await (const event of stream) {
       console.log("📦 Event:", Object.keys(event));
 
-      // Agent is generating a response or calling a tool
       if (event.agent?.messages) {
         const messagesArray = Array.isArray(event.agent.messages)
           ? event.agent.messages
           : Object.values(event.agent.messages);
         const lastMsg = messagesArray[messagesArray.length - 1];
 
-        // Check if it's a text response
         if (lastMsg.content && typeof lastMsg.content === "string") {
           agentResponse = lastMsg.content;
+          shouldSaveMemory = true; 
         }
 
         // Check if agent is calling save_profile tool
@@ -57,58 +57,40 @@ export async function handleMessage(ctx: MyContext) {
           );
 
           if (saveToolCall) {
-            isCallingTool = true;
             await ctx.reply("💾 Saving your profile...");
             console.log(
               "🔧 Agent calling save_profile with:",
               saveToolCall.args
             );
 
-            // CRITICAL: Inject userId into tool args if not present
-            // The agent doesn't know the userId, we need to provide it
+            // Inject userId into tool args
             saveToolCall.args.userId = userId;
+            profileSaveSuccess = true;
           }
         }
-      }
-
-      // Tool has finished executing
-      if (event.tools?.messages) {
-        const messagesArray = Array.isArray(event.tools.messages)
-          ? event.tools.messages
-          : Object.values(event.tools.messages);
-        const toolResult = messagesArray[0].content as string;
-
-        console.log("✅ Tool result:", toolResult);
-
-        // Send the success message
-        await ctx.reply(toolResult, { parse_mode: "Markdown" });
-
-        // Clear thread after successful save
-        ctx.session.threadId = undefined;
-        return;
       }
     }
 
     if (agentResponse) {
-      // 1. Reply immediately
       await ctx.reply(agentResponse, { parse_mode: "Markdown" });
 
-      mem0
-        .add(
-          [
-            { role: "user", content: userMessage },
-            { role: "assistant", content: agentResponse },
-          ],
-          { userId: userId.toString() }
-        )
-        .catch((err) => {
-          console.error("Memory save error:", err);
-        });
-    }
+      if (shouldSaveMemory && !profileSaveSuccess) {
+        mem0
+          .add(
+            [
+              { role: "user", content: userMessage },
+              { role: "assistant", content: agentResponse },
+            ],
+            { userId: userId.toString() } 
+          )
+          .catch((err) => {
+            console.error("Memory save error:", err);
+          });
+      }
 
-    // If we got a text response (not a tool call), send it
-    if (agentResponse && !isCallingTool) {
-      await ctx.reply(agentResponse, { parse_mode: "Markdown" });
+      if (profileSaveSuccess) {
+        ctx.session.threadId = undefined;
+      }
     }
   } catch (error) {
     console.error("❌ Error:", error);
