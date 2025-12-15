@@ -1,6 +1,5 @@
 import { openAiLLM } from "../../../config/llm.ts";
 import { ValidationSchema, type AgentState } from "../../state/state.ts";
-
 export async function validateInfo(state: AgentState) {
   const allMessages = state.messages.join("\n\n");
 

@@ -53,7 +53,7 @@ Set isConfirming = false if they want changes.`,
     console.log("✅ User confirmed - profile is complete");
     return {
       isComplete: true,
-      needsConfirmation: false, // Reset
+      needsConfirmation: false,
     };
   }
 

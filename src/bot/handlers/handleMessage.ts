@@ -28,15 +28,92 @@ export async function handleMessage(ctx: MyContext) {
       config
     );
 
+    let statusMessage = null; // Track the status message for editing
+
     for await (const event of stream) {
       console.log("📦 Event:", Object.keys(event));
 
-      // Handle interrupts - this is where the summary will be shown
+      // Update status based on which node is running
+      if (event.validate && ctx.chat) {
+        if (!statusMessage) {
+          statusMessage = await ctx.reply("🔍 Validating your resume...");
+        } else {
+          try {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMessage.message_id,
+              "Validating your Information..."
+            );
+          } catch (error) {
+            console.error("Edit failed:", error);
+          }
+        }
+      }
+
+      if (event.ask && ctx.chat) {
+        if (!statusMessage) {
+          statusMessage = await ctx.reply("❓ Analyzing information...");
+        } else {
+          try {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMessage.message_id,
+              "❓ Analyzing information..."
+            );
+          } catch (error) {
+            console.error("Edit failed:", error);
+          }
+        }
+      }
+
+      if (event.confirm && ctx.chat) {
+        if (!statusMessage) {
+          statusMessage = await ctx.reply("📋 Generating summary...");
+        } else {
+          try {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMessage.message_id,
+              " Generating Profile summary..."
+            );
+          } catch (error) {
+            console.error("Edit failed:", error);
+          }
+        }
+      }
+
+      if (event.save && ctx.chat) {
+        if (!statusMessage) {
+          statusMessage = await ctx.reply("💾 Saving your profile...");
+        } else {
+          try {
+            await ctx.api.editMessageText(
+              ctx.chat.id,
+              statusMessage.message_id,
+              "💾 Saving your profile..."
+            );
+          } catch (error) {
+            console.error("Edit failed:", error);
+          }
+        }
+      }
+
+      // Handle interrupts
       if (
         "__interrupt__" in event &&
         event.__interrupt__ &&
         Array.isArray(event.__interrupt__)
       ) {
+        // Delete status message before showing interrupt
+        if (statusMessage && ctx.chat) {
+          try {
+            await ctx.api.deleteMessage(ctx.chat.id, statusMessage.message_id);
+            statusMessage = null;
+          } catch (error) {
+            console.error("Delete failed:", error);
+          }
+        }
+
         for (const interruptData of event.__interrupt__) {
           console.log(
             "⏸️ Interrupt value:",
@@ -47,19 +124,36 @@ export async function handleMessage(ctx: MyContext) {
         continue;
       }
 
-      if (event.ask) {
-        const message = event.ask.messages?.[0];
-        if (message) {
-          await ctx.reply(message);
-        }
-      }
-
+      // Handle save completion
       if (event.save) {
         const message = event.save.messages?.[0];
         if (message) {
+          // Delete status message
+          if (statusMessage && ctx.chat) {
+            try {
+              await ctx.api.deleteMessage(
+                ctx.chat.id,
+                statusMessage.message_id
+              );
+              statusMessage = null;
+            } catch (error) {
+              console.error("Delete failed:", error);
+            }
+          }
+
+          // Send final success message
           await ctx.reply(message, { parse_mode: "Markdown" });
-          ctx.session.threadId = undefined; // Clear thread after save
+          ctx.session.threadId = undefined;
         }
+      }
+    }
+
+    // Clean up status message if stream ends without save
+    if (statusMessage && ctx.chat) {
+      try {
+        await ctx.api.deleteMessage(ctx.chat.id, statusMessage.message_id);
+      } catch (error) {
+        console.error("Cleanup delete failed:", error);
       }
     }
   } catch (error) {
