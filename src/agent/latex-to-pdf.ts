@@ -1,9 +1,26 @@
+function extractLatex(raw: string): string {
+  let out = raw.trim();
+
+  // Remove triple-backtick fences if present
+  if (out.startsWith("```")) {
+    out = out.replace(/^```[a-zA-Z]*\n?/, "");
+    out = out.replace(/```$/, "");
+  }
+
+  // Remove accidental leading/trailing markdown
+  out = out.replace(/^```/, "").replace(/```$/, "");
+
+  return out.trim();
+}
+
 export async function latexToPDF(latexCode: string): Promise<Buffer> {
   console.log("Got LatexToPdf call with ");
   console.log(latexCode);
   console.log("--------------------");
+
+  const fixedCode = extractLatex(latexCode);
   const form = new FormData();
-  form.append("filecontents[]", latexCode);
+  form.append("filecontents[]", fixedCode);
   form.append("filename[]", "document.tex");
   form.append("engine", "pdflatex");
   form.append("return", "pdf");
@@ -20,35 +37,13 @@ export async function latexToPDF(latexCode: string): Promise<Buffer> {
   console.log("latexToPDF status:", res.status, "ct:", ct, "len:", buf.length);
 
   if (!ct.includes("application/pdf") || buf.length < 1000) {
-    console.error(
-      "LaTeX API returned non-PDF:",
-      buf.toString("utf8").slice(0, 500)
-    );
+    const text = buf.toString("utf8");
+    console.error("LaTeX API returned non-PDF full log:\n", text);
+    // Optionally, extract the first LaTeX error line:
+    const firstBang = text.split("\n").find((l) => l.startsWith("! "));
+    if (firstBang) console.error("First LaTeX error:", firstBang);
     throw new Error("LaTeX compilation failed (non‑PDF response)");
   }
 
   return buf;
 }
-
-// async function main() {
-//   const minimalLatex = `
-// \\documentclass{article}
-// \\begin{document}
-// Hello from NerdyResume!
-// \\end{document}
-// `.trim();
-
-//   try {
-//     const pdf = await latexToPDF(minimalLatex);
-//     console.log("✅ Got PDF bytes:", pdf.length);
-
-//     // For quick manual check: write to disk if you're in Node
-//     const fs = await import("fs");
-//     fs.writeFileSync("test.pdf", pdf);
-//     console.log("Saved test.pdf");
-//   } catch (e) {
-//     console.error("❌ Test failed:", e);
-//   }
-// }
-
-// main();

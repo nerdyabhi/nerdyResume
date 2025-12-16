@@ -121,6 +121,7 @@ export async function handleMessage(ctx: MyContext) {
               );
 
               console.log(`📤 Sent resume PDF to user ${userId}`);
+              return;
             }
           } catch (err) {
             console.error("Failed to parse tool result:", err);
