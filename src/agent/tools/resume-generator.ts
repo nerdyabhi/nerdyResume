@@ -2,25 +2,19 @@ import { tool } from "@langchain/core/tools";
 import { gpt4o, openAiLLM } from "../../config/llm.ts";
 import { latexToPDF } from "../latex-to-pdf.ts";
 import z from "zod";
-import { template1 } from "../../templates/resume-templates.ts";
-
-function chooseTemplate(templateId: string): string {
-  return template1;
-}
+import { getResumeTemplate } from "../../templates/resume-templates.ts";
+import { resumeDataSchema } from "../../schemas/resume-data-schema.ts";
 
 export const generateResumePDFTool = tool(
   async ({ userProfile, jobDescription, templateId }) => {
     try {
       console.log("🔧 Generating resume PDF with template:", templateId);
-      console.log("-----------------------------------");
-      console.log(userProfile);
-      console.log("-----------------------------------");
-      const latexCode = await generateLatexResume(
-        userProfile,
-        jobDescription,
-        templateId
-      );
+      
+      const resumeData = await generateResumeData(userProfile, jobDescription);
+      
+      const latexCode = getResumeTemplate(resumeData, templateId);
 
+      // Step 3: Validate LaTeX
       if (
         !latexCode.includes("\\begin{document}") ||
         !latexCode.includes("\\end{document}")
@@ -53,74 +47,42 @@ export const generateResumePDFTool = tool(
       userProfile: z
         .string()
         .describe("JSON string of user profile from get_user_profile tool"),
-      jobDescription: z.string().describe("The job description text"),
-      templateId: z.string().describe("One of: template1"),
+      jobDescription: z.string().describe("The job description text (can be empty)"),
+      templateId: z.number().describe("One of: template1, template2, template3, template4, template5"),
     }),
   }
 );
 
-async function generateLatexResume(
+async function generateResumeData(
   profileJson: string,
-  jd: string,
-  templateId: string
-): Promise<string> {
-  const profile = JSON.parse(profileJson);
-  const template = chooseTemplate(templateId);
+  jobDescription: string
+): Promise<z.infer<typeof resumeDataSchema>> {
+  
+  let profile;
+  try {
+    profile = JSON.parse(profileJson);
+  } catch (error) {
+    throw new Error(`Invalid JSON: ${(error as Error).message}`);
+  }
+  
+  const prompt = `Convert this profile to structured resume format.
 
-  const prompt = `
-You are an expert LaTeX resume generator and technical resume writer.
-
-OUTPUT RULES:
-- Return ONLY raw, compilable LaTeX source (no markdown, no explanations).
-- Ensure ZERO spelling or grammar mistakes.
-- The resume must be professional, concise, and recruiter-ready.
-- Target at least 550+ words WITHOUT adding filler content.
-
-GOAL:
-- Generate a SINGLE-PAGE, ATS-friendly resume in LaTeX.
-- Use the provided TEMPLATE structure, commands, and layout exactly.
-- Do NOT invent, exaggerate, or assume any data.
-- Sections must follow this format:
-  Education, Experience, Projects, Skills, Achievements.
-
-DATA RULES:
-- Use ONLY facts explicitly present in the USER PROFILE.
-- Tailor wording, ordering, and emphasis to the JOB DESCRIPTION
-  (skills, responsibilities, keywords).
-- Quantify impact ONLY when real numeric values exist in the profile.
-- If exact metrics are unavailable, describe scope, scale, ownership,
-  or technical complexity instead (DO NOT fabricate numbers).
-- Use strong action verbs and outcome-focused bullet points.
-- Remove or compress weak, redundant, or low-signal content.
-
-PAGE USAGE RULES:
-- The final resume MUST fit on EXACTLY ONE page.
-- Use roughly 80–95% of the vertical space.
-- If space remains, you MUST (in order):
-  1) Add more relevant Experience bullets derived from USER PROFILE,
-  2) Add additional concrete Projects with 1–3 factual bullets each,
-  3) Add real Achievements, Certifications, or Skills from USER PROFILE.
-- NEVER add filler, generic statements, or imaginary accomplishments.
-
-SECTIONS (keep this order; omit only if truly empty):
-- Education
-- Experience
-- Projects
-- Achievements / Certifications
-- Technical Skills
-
-TEMPLATE (use its structure exactly; do NOT modify packages or documentclass):
-${template}
-
-USER PROFILE (single source of truth – all facts must come from here):
+PROFILE:
 ${JSON.stringify(profile, null, 2)}
 
-JOB DESCRIPTION (use ONLY to prioritize language and keywords, NOT to invent facts):
-${jd}
+JOB DESCRIPTION:
+${jobDescription || "General software engineering"}
 
-Return ONLY the complete LaTeX code for the one-page resume.
-`;
+CRITICAL: Include EVERY project, EVERY experience, EVERY achievement from the profile. Extract tech stacks from project bullets (e.g., "using Unity and ARCore" → tech: ["Unity", "ARCore"]). Never skip or summarize. Tailor summary to job keywords.`;
 
-  const response = await gpt4o.invoke(prompt);
-  return String(response.content ?? "");
+  const structuredLLM = gpt4o.withStructuredOutput(resumeDataSchema);
+  const resumeData = await structuredLLM.invoke(prompt);
+
+  const parseResult = resumeDataSchema.safeParse(resumeData);
+  if (!parseResult.success) {
+    throw new Error("Schema validation failed");
+  }
+  
+  return parseResult.data;
 }
+

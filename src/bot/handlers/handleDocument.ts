@@ -3,6 +3,41 @@ import { agent } from "../../agent/index.ts";
 import { PDFParse } from "pdf-parse";
 import { HumanMessage } from "@langchain/core/messages";
 
+
+function extractURLs(text: string): { linkedin?: string; github?: string; portfolio?: string } {
+  const urls: { linkedin?: string; github?: string; portfolio?: string } = {};
+  
+  // Extract all URLs from text
+  const urlRegex = /(https?:\/\/[^\s]+)/gi;
+  const matches = text.match(urlRegex) || [];
+  
+  for (const url of matches) {
+    const cleanUrl = url.replace(/[,)\]}>]+$/, '');
+    
+    if (cleanUrl.includes('linkedin.com')) {
+      urls.linkedin = cleanUrl;
+    } else if (cleanUrl.includes('github.com')) {
+      urls.github = cleanUrl;
+    } else if (!urls.portfolio && !cleanUrl.includes('linkedin') && !cleanUrl.includes('github')) {
+      urls.portfolio = cleanUrl;
+    }
+  }
+  
+  return urls;
+}
+
+function enrichResumeText(text: string): string {
+  const urls = extractURLs(text);
+  
+  let enhanced = text + "\n\n--- EXTRACTED PROFILE LINKS ---\n";
+  
+  if (urls.linkedin) enhanced += `LinkedIn: ${urls.linkedin}\n`;
+  if (urls.github) enhanced += `GitHub: ${urls.github}\n`;
+  if (urls.portfolio) enhanced += `Portfolio: ${urls.portfolio}\n`;
+  
+  return enhanced;
+}
+
 export const handleDocument = async (ctx: MyContext) => {
   if (!ctx.message || !ctx.from || !ctx.message.document) return;
 
@@ -10,7 +45,7 @@ export const handleDocument = async (ctx: MyContext) => {
 
   if (document.mime_type === "application/pdf") {
     try {
-      // Check file size first (optional pre-check)
+      // Check file size first
       if (document.file_size && document.file_size > 2 * 1024 * 1024) {
         await ctx.reply(
           "⚠️ Please send a PDF with less than 4 pages (max 2MB)."
@@ -31,10 +66,8 @@ export const handleDocument = async (ctx: MyContext) => {
 
       console.log("Received buffer");
 
-      // Parse PDF - v2 API uses class instantiation
+      // Parse PDF
       const parser = new PDFParse({ data: buffer });
-
-      // Get document info to check page count
       const info = await parser.getInfo();
 
       console.log("📊 PDF Info:", {
@@ -44,7 +77,7 @@ export const handleDocument = async (ctx: MyContext) => {
 
       // Check page count
       if (info.total > 3) {
-        await parser.destroy(); // Clean up
+        await parser.destroy();
         await ctx.reply(
           `❌ Your PDF has ${info.total} pages. Please send a resume with 3 pages or less.`
         );
@@ -61,17 +94,32 @@ export const handleDocument = async (ctx: MyContext) => {
         );
         return;
       }
+
+      // ✅ ENHANCED: Extract URLs and enrich text
+      const urls = extractURLs(extractedText);
+      const enrichedText = enrichResumeText(extractedText);
+      
+      console.log("🔗 Extracted URLs:", urls);
+
       const previewText =
-        extractedText.substring(0, 500) +
-        (extractedText.length > 500 ? "..." : "");
+        extractedText;
 
-      await ctx.reply(
-        `✅ Successfully extracted text from your ${info.total}-page PDF!\n\n` +
-          `📝 Preview:\n${previewText}\n\n` +
-          `I'll now process this information to create your profile.`
-      );
+      let replyMessage = `✅ Successfully extracted text from your ${info.total}-page PDF!\n\n`;
+      
+      // ✅ Show found URLs
+      if (urls.linkedin || urls.github || urls.portfolio) {
+        replyMessage += "🔗 Found profile links:\n";
+        if (urls.linkedin) replyMessage += `• LinkedIn: ${urls.linkedin}\n`;
+        if (urls.github) replyMessage += `• GitHub: ${urls.github}\n`;
+        if (urls.portfolio) replyMessage += `• Portfolio: ${urls.portfolio}\n`;
+        replyMessage += "\n";
+      }
+      
+      replyMessage += `📝 Preview:\n${previewText}\n\nI'll now process this information to create your profile.`;
 
-      // Feed to your agent
+      await ctx.reply(replyMessage);
+
+      // Feed enriched text to agent
       const userId = ctx.from.id;
       let threadId = `user_${userId}`;
 
@@ -89,7 +137,7 @@ export const handleDocument = async (ctx: MyContext) => {
       try {
         const stream = await agent.stream(
           {
-            messages: [new HumanMessage(extractedText)],
+            messages: [new HumanMessage(enrichedText)],  // ✅ Use enriched text
           },
           config
         );
@@ -100,9 +148,7 @@ export const handleDocument = async (ctx: MyContext) => {
 
         for await (const event of stream) {
           console.log("📦 Event:", JSON.stringify(Object.keys(event)));
-          console.log("📦 Full Event:", JSON.stringify(event, null, 2));
 
-          // Agent is generating a response or calling a tool
           if (event.agent?.messages) {
             const messagesArray = Array.isArray(event.agent.messages)
               ? event.agent.messages
@@ -115,7 +161,6 @@ export const handleDocument = async (ctx: MyContext) => {
               hasToolCalls: !!lastMsg.tool_calls?.length,
             });
 
-            // Check if it's a text response
             if (lastMsg.content && typeof lastMsg.content === "string") {
               agentResponse = lastMsg.content;
               console.log(
@@ -124,7 +169,6 @@ export const handleDocument = async (ctx: MyContext) => {
               );
             }
 
-            // Check if agent is calling save_profile tool
             if (lastMsg.tool_calls?.length > 0) {
               const saveToolCall = lastMsg.tool_calls.find(
                 (tc: any) => tc.name === "save_profile"
@@ -144,7 +188,6 @@ export const handleDocument = async (ctx: MyContext) => {
             }
           }
 
-          // Tool has finished executing
           if (event.tools?.messages) {
             const messagesArray = Array.isArray(event.tools.messages)
               ? event.tools.messages
@@ -153,20 +196,16 @@ export const handleDocument = async (ctx: MyContext) => {
 
             console.log("✅ Tool result:", toolResult);
 
-            // Send the success message
             await ctx.reply(toolResult, { parse_mode: "Markdown" });
 
-            // Clear thread after successful save
             ctx.session.threadId = undefined;
             return;
           }
         }
 
-        // If we got a text response (not a tool call), send it
         if (agentResponse && !isCallingTool && !hasReplied) {
           await ctx.reply(agentResponse, { parse_mode: "Markdown" });
         } else if (!hasReplied) {
-          // Fallback if no response was generated
           await ctx.reply(
             "✅ I've received your resume and will process it. Please provide any missing information if I ask."
           );
