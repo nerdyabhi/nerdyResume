@@ -120,6 +120,8 @@ export async function handleMessage(ctx: MyContext) {
                 }
               );
 
+              await mem0.delete(config.configurable.thread_id);
+
               console.log(`📤 Sent resume PDF to user ${userId}`);
               return;
             }

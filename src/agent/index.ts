@@ -13,7 +13,7 @@ const memory = new MemorySaver();
 const preModelHook = async (state: any) => {
   const trimmed = await trimMessages(state.messages, {
     strategy: "last",
-    maxTokens: 100000,
+    maxTokens: 80000,
     includeSystem: true,
     tokenCounter: openAiLLM
   });
