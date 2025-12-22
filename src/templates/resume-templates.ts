@@ -18,7 +18,6 @@ function escapeLatex(text: string): string {
     .replace(/\%/g, "\\%");
 }
 
-// ✅ Helper to build header links dynamically
 function buildHeaderLinks(data: ResumeData): string {
   const links: string[] = [];
 
@@ -58,21 +57,31 @@ function buildHeaderLinks(data: ResumeData): string {
   return links.join(" $|$ ");
 }
 
-// ✅ Helper to render project links (GitHub + Live URL)
 function buildProjectLinks(project: ResumeData["projects"][0]): string {
   const links: string[] = [];
 
+  // Live/Demo link (prioritize this first)
+  if (
+    project.url &&
+    project.url.trim() &&
+    !project.url.includes("github.com")
+  ) {
+    links.push(
+      `\\href{${project.url}}{\\textbf{\\textcolor{blue}{\\underline{Live}}}}`
+    );
+  }
+
   // GitHub link
-  if (project.github) {
+  if (project.github && project.github.trim()) {
     links.push(
       `\\href{${project.github}}{\\textbf{\\textcolor{blue}{\\underline{GitHub}}}}`
     );
   }
 
-  // Live/Demo link
-  if (project.url) {
+  // Fallback: if url contains github.com (data migration case)
+  if (project.url && project.url.includes("github.com") && !project.github) {
     links.push(
-      `\\href{${project.url}}{\\textbf{\\textcolor{blue}{\\underline{Live}}}}`
+      `\\href{${project.url}}{\\textbf{\\textcolor{blue}{\\underline{GitHub}}}}`
     );
   }
 
