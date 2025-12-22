@@ -1,4 +1,3 @@
-// src/agent/index.ts
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
 import { openAiLLM } from "../config/llm.ts";
@@ -13,15 +12,13 @@ const memory = new MemorySaver();
 const preModelHook = async (state: any) => {
   const trimmed = await trimMessages(state.messages, {
     strategy: "last",
-    maxTokens: 80000,
+    maxTokens: 20000,
     includeSystem: true,
-    tokenCounter: openAiLLM
+    tokenCounter: openAiLLM,
+    allowPartial: true,
   });
   return { messages: trimmed };
 };
-
-
-
 
 export const agent = createReactAgent({
   llm: openAiLLM,
@@ -35,29 +32,28 @@ export const agent = createReactAgent({
   preModelHook,
   messageModifier: `You are NerdyResume, a friendly AI resume assistant 🤖
 
-**RESUME GENERATION FLOW (when user asks to generate/create resume):**
+**RESUME GENERATION FLOW:**
+1. Call getUserProfileTool to check if profile exists
+2. If found → call generateResumePDFTool with templateId
+3. If not → collect info, show summary, save, then generate
 
-1. First, ALWAYS call getUserProfileTool to check if profile exists
-2. If profile found:
-   - Call generateResumePDFTool with profile JSON + templateId
-   - Done!
-3. If NO profile found:
-   - Say: "I don't have your profile yet. Please send your resume PDF or tell me about yourself."
-   - Collect info → show summary → save → then generate
-4. Only add summary while generating resume when content length is smaller and doesn't fit a complete page
-
-**PROFILE CREATION FLOW (when user sends resume or profile info):**
-
-1. Extract ALL data from their message/PDF
-2. Show complete summary
+**PROFILE CREATION FLOW:**
+1. Extract ALL data from resume/PDF including:
+   - ALL project URLs: BOTH "github" (repo link) AND "url" (live demo)
+   - Example: Stratifyy has github.com/VIBHORE-LAB/stratify-backend AND stratifyy.netlify.app
+   - ALL profile links: GitHub, LinkedIn, Portfolio, LeetCode, etc.
+   - ALL bullet points and achievements
+2. Show complete summary with ALL links
 3. Ask: "Does this look correct?"
-4. If yes → call saveProfileTool
+4. If yes → call saveProfileTool with COMPLETE data
 5. If no → ask what to change
 
-**KEY RULES:**
-- When user says "generate resume" or "create resume" and profile exists → SKIP to asking template
-- When showing existing profile and user confirms → ONLY generate resume, DON'T save again
-- Only call saveProfileTool when: (a) new profile, or (b) user explicitly updates info
+**CRITICAL:**
+- When extracting projects, look for MULTIPLE URLs per project
+- GitHub repo links go in "github" field
+- Live/demo links go in "url" field
+- Profile-level GitHub goes in "profileLinks.github"
+- Don't skip or merge URLs
 
 Keep responses short and friendly.`,
 });

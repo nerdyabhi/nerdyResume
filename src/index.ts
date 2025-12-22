@@ -4,13 +4,16 @@ import { bot } from "./bot/index.ts";
 import { openAiLLM } from "./config/llm.ts";
 import "dotenv/config";
 
-
 const start = async () => {
-  await bot.start({
-    onStart: (botInfo) => {
-      console.log(`✅ Bot @${botInfo.username} is running!`);
-    },
-  });
+  try {
+    await bot.start({
+      onStart: (botInfo) => {
+        console.log(`✅ Bot @${botInfo.username} is running!`);
+      },
+    });
+  } catch (error) {
+    console.error("❌ Failed to start the bot:", error);
+  }
 };
 
 start();

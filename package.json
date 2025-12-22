@@ -33,6 +33,7 @@
     "sequelize": "^6.37.7",
     "tools": "link:@langchain/core/tools",
     "typescript": "^5.9.3",
+    "unpdf": "^1.4.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {

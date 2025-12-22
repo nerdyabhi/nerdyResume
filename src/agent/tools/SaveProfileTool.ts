@@ -10,7 +10,7 @@ export const saveProfileTool = tool(
       if (!userId) {
         return JSON.stringify({
           success: false,
-          error: "userId not found in config"
+          error: "userId not found in config",
         });
       }
 
@@ -26,81 +26,116 @@ Saved:
 • ${profile.activities?.length || 0} activities
 • ${profile.achievements?.length || 0} achievements
 
-You can now generate resumes with /resume`
+You can now generate resumes with /resume`,
       });
-
     } catch (error) {
       console.error("❌ saveProfileTool error:", error);
       return JSON.stringify({
         success: false,
-        error: `Failed to save profile: ${(error as Error).message}`
+        error: `Failed to save profile: ${(error as Error).message}`,
       });
     }
   },
   {
     name: "save_profile",
-    description: `Save user's COMPLETE resume data. Extract EVERYTHING with ALL details and bullets., don't make up things , capture all important details , and all bullet points don't miss even a single important information`,
+    description: `Save user's COMPLETE resume data. Extract EVERYTHING including:
+- ALL project URLs (both GitHub repo AND live demo links)
+- ALL bullet points and achievements
+- ALL profile links (GitHub, LinkedIn, Portfolio, LeetCode, etc.)
+Don't make up information - capture exactly what's in the resume.`,
     schema: z.object({
       profile: z.object({
         name: z.string(),
         email: z.string().email(),
         phone: z.string(),
-        summary: z.string().optional().describe("2-3 sentence professional summary"),
-        
-        // ✅ Experience with bullets array
-        experience: z.array(
-          z.object({
-            company: z.string(),
-            role: z.string(),
-            duration: z.string(),
-            description: z.string().describe("Brief overview"),
-            bullets: z.array(z.string()).describe("ALL achievement bullets from resume"),
-            technologies: z.array(z.string()).optional(),
-          })
-        ).optional(),
-        
-        // ✅ Education with GPA and coursework
-        education: z.array(
-          z.object({
-            institution: z.string(),
-            degree: z.string(),
-            duration: z.string(),
-            gpa: z.string().optional().describe("e.g., '8.97/10'"),
-            coursework: z.array(z.string()).optional().describe("Relevant courses"),
-            description: z.string().optional(),
-          })
-        ).optional(),
-        
-        // ✅ Projects with bullets
-        projects: z.array(
-          z.object({
-            name: z.string(),
-            description: z.string(),
-            tech: z.array(z.string()),
-            url: z.string().optional(),
-            bullets: z.array(z.string()).optional().describe("Project achievement bullets"),
-          })
-        ).optional(),
-        
-        // ✅ Activities (Google Developer Group, etc.)
-        activities: z.array(
-          z.object({
-            organization: z.string(),
-            role: z.string(),
-            duration: z.string().optional(),
-            description: z.string().optional(),
-          })
-        ).optional().describe("Club memberships, community activities"),
-        
+        summary: z
+          .string()
+          .optional()
+          .describe("2-3 sentence professional summary"),
+
+        experience: z
+          .array(
+            z.object({
+              company: z.string(),
+              role: z.string(),
+              duration: z.string(),
+              location: z.string().optional(),
+              description: z.string().optional().describe("Brief overview"),
+              bullets: z
+                .array(z.string())
+                .describe("ALL achievement bullets from resume"),
+              technologies: z.array(z.string()).optional(),
+            })
+          )
+          .optional(),
+
+        education: z
+          .array(
+            z.object({
+              institution: z.string(),
+              degree: z.string(),
+              duration: z.string(),
+              location: z.string().optional(),
+              gpa: z.string().optional().describe("e.g., '8.97/10'"),
+              coursework: z
+                .array(z.string())
+                .optional()
+                .describe("Relevant courses"),
+              description: z.string().optional(),
+            })
+          )
+          .optional(),
+
+        // ✅ FIXED: Added github field for projects
+        projects: z
+          .array(
+            z.object({
+              name: z.string(),
+              description: z.string().optional(),
+              duration: z.string().optional(),
+              tech: z.array(z.string()),
+              url: z.string().optional().describe("Live demo or project URL"),
+              github: z.string().optional().describe("GitHub repository URL"), // ✅ NEW
+              bullets: z
+                .array(z.string())
+                .optional()
+                .describe("Project achievement bullets"),
+            })
+          )
+          .optional(),
+
+        activities: z
+          .array(
+            z.object({
+              organization: z.string(),
+              role: z.string(),
+              duration: z.string().optional(),
+              description: z.string().optional(),
+            })
+          )
+          .optional()
+          .describe("Club memberships, community activities"),
+
         skills: z.array(z.string()).min(3),
         achievements: z.array(z.string()).optional(),
-        
-        profileLinks: z.object({
-          github: z.string().optional(),
-          linkedin: z.string().optional(),
-          portfolio: z.string().optional(),
-          leetcode: z.string().optional(),
-        }).optional(),
+
+        // ✅ ENHANCED: More profile links
+        profileLinks: z
+          .object({
+            github: z.string().optional().describe("GitHub profile URL"),
+            linkedin: z.string().optional().describe("LinkedIn profile URL"),
+            portfolio: z
+              .string()
+              .optional()
+              .describe("Personal portfolio/website URL"),
+            leetcode: z.string().optional().describe("LeetCode profile URL"),
+            hackerrank: z
+              .string()
+              .optional()
+              .describe("HackerRank profile URL"),
+            twitter: z.string().optional().describe("Twitter/X profile URL"),
+          })
+          .optional(),
       }),
     }),
   }
