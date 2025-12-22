@@ -67,65 +67,100 @@ async function generateResumeData(
     throw new Error(`Invalid JSON: ${(error as Error).message}`);
   }
 
-  // ✅ Enhanced prompt with explicit URL extraction rules
-  const prompt = `Convert this profile to structured resume format.
+  console.log("📥 RAW PROFILE DATA:");
+  console.log("Projects:", JSON.stringify(profile.projects, null, 2));
+  console.log("Profile Links:", JSON.stringify(profile.profileLinks, null, 2));
 
-PROFILE:
+  const prompt = `Convert this user profile to resume format matching the resumeDataSchema.
+
+USER PROFILE:
 ${JSON.stringify(profile, null, 2)}
 
 JOB DESCRIPTION:
-${jobDescription || "General software engineering"}
+${jobDescription || "General software engineering position"}
 
-CRITICAL EXTRACTION RULES:
+EXTRACTION RULES:
 
-1. **PROJECT URLS** - Extract TWO separate URLs per project:
-   - "url" field = Live demo/deployed app (netlify.app, vercel.app, custom domains)
-   - "github" field = GitHub repository (github.com/username/repo)
-   - If you see BOTH types for a project, put them in SEPARATE fields
-   - Example from profile:
-     {
-       "name": "Stratifyy",
-       "url": "https://stratifyy.netlify.app/",
-       "github": "https://github.com/VIBHORE-LAB/stratify-backend"
-     }
+1. **Profile-level links:**
+   - Extract github, linkedin, portfolio from profileLinks object
+   - Put them in TOP-LEVEL fields (not nested)
 
-2. **COMPLETENESS:**
-   - Include EVERY project with ALL bullets
-   - Include EVERY experience with ALL bullets
-   - Include EVERY achievement
-   - Extract tech stacks from descriptions (e.g., "using React and Node.js" → tech: ["React", "Node.js"])
+2. **Projects:**
+   - For EACH project, extract:
+     * name, description, tech array, duration
+     * bullets: ALL bullet points from the project
+     * url: Live demo URL (netlify, vercel, custom domain)
+     * github: GitHub repository URL
+   - If a project has BOTH urls, put them in SEPARATE fields
+   - NEVER leave bullets empty - always include at least the description
 
-3. **FORMATTING:**
-   - Duration in "YYYY-YYYY" or "Month YYYY - Month YYYY" format
-   - Professional summary: 2-3 sentences tailored to job keywords
-   - Preserve all metrics and numbers from bullets
+3. **Complete extraction:**
+   - ALL experience bullets
+   - ALL education details
+   - ALL skills
+   - ALL achievements
 
-Never skip, summarize, or merge information. Extract everything as-is.`;
+Output valid JSON matching resumeDataSchema structure.`;
 
   const structuredLLM = gpt4o.withStructuredOutput(resumeDataSchema);
-  const resumeData = await structuredLLM.invoke(prompt);
+  let resumeData = await structuredLLM.invoke(prompt);
+
+  // ✅ FORCE FIX: Manually copy links and bullets from original profile
+  if (profile.profileLinks) {
+    resumeData.github = resumeData.github || profile.profileLinks.github;
+    resumeData.linkedin = resumeData.linkedin || profile.profileLinks.linkedin;
+    resumeData.portfolio =
+      resumeData.portfolio || profile.profileLinks.portfolio;
+  }
+
+  // ✅ FORCE FIX: Copy project links and ensure bullets exist
+  if (profile.projects && resumeData.projects) {
+    resumeData.projects = resumeData.projects.map((proj, idx) => {
+      const originalProj = profile.projects[idx];
+
+      return {
+        ...proj,
+        // Force copy URLs
+        url: proj.url || originalProj?.url || undefined,
+        github: proj.github || originalProj?.github || undefined,
+        // Ensure bullets exist - use description if empty
+        bullets:
+          proj.bullets && proj.bullets.length > 0
+            ? proj.bullets
+            : originalProj?.bullets && originalProj.bullets.length > 0
+            ? originalProj.bullets
+            : proj.description
+            ? [proj.description]
+            : ["Project details available upon request"],
+      };
+    });
+  }
+
+  console.log("🤖 AFTER MANUAL FIX:");
+  console.log("Profile links:", {
+    github: resumeData.github,
+    linkedin: resumeData.linkedin,
+    portfolio: resumeData.portfolio,
+  });
+  console.log(
+    "Projects:",
+    JSON.stringify(
+      resumeData.projects?.map((p) => ({
+        name: p.name,
+        url: p.url,
+        github: p.github,
+        bulletsCount: p.bullets?.length,
+      })),
+      null,
+      2
+    )
+  );
 
   const parseResult = resumeDataSchema.safeParse(resumeData);
   if (!parseResult.success) {
     console.error("❌ Schema validation errors:", parseResult.error);
-    throw new Error("Schema validation failed");
+    throw new Error(`Schema validation failed: ${parseResult.error.message}`);
   }
-
-  // ✅ Post-process: Clean up empty URLs
-  if (parseResult.data.projects) {
-    parseResult.data.projects = parseResult.data.projects.map((proj) => ({
-      ...proj,
-      url: proj.url && proj.url.trim() !== "" ? proj.url : undefined,
-      github:
-        proj.github && proj.github.trim() !== "" ? proj.github : undefined,
-    }));
-  }
-
-  console.log("✅ Generated resume data:", {
-    projects: parseResult.data.projects.length,
-    hasGithubLinks: parseResult.data.projects.some((p) => p.github),
-    hasLiveLinks: parseResult.data.projects.some((p) => p.url),
-  });
 
   return parseResult.data;
 }

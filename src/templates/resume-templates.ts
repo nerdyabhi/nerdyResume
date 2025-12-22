@@ -21,12 +21,10 @@ function escapeLatex(text: string): string {
 function buildHeaderLinks(data: ResumeData): string {
   const links: string[] = [];
 
-  // Email (always present)
   links.push(
     `\\href{mailto:${data.email}}{\\underline{${escapeLatex(data.email)}}}`
   );
 
-  // LinkedIn
   if (data.linkedin) {
     const handle = data.linkedin.split("/").pop() || data.linkedin;
     links.push(
@@ -36,7 +34,6 @@ function buildHeaderLinks(data: ResumeData): string {
     );
   }
 
-  // GitHub
   if (data.github) {
     const handle = data.github.split("/").pop() || data.github;
     links.push(
@@ -44,7 +41,6 @@ function buildHeaderLinks(data: ResumeData): string {
     );
   }
 
-  // Portfolio
   if (data.portfolio) {
     const display = data.portfolio
       .replace(/https?:\/\/(www\.)?/, "")
@@ -60,7 +56,6 @@ function buildHeaderLinks(data: ResumeData): string {
 function buildProjectLinks(project: ResumeData["projects"][0]): string {
   const links: string[] = [];
 
-  // Live/Demo link (prioritize this first)
   if (
     project.url &&
     project.url.trim() &&
@@ -71,14 +66,12 @@ function buildProjectLinks(project: ResumeData["projects"][0]): string {
     );
   }
 
-  // GitHub link
   if (project.github && project.github.trim()) {
     links.push(
       `\\href{${project.github}}{\\textbf{\\textcolor{blue}{\\underline{GitHub}}}}`
     );
   }
 
-  // Fallback: if url contains github.com (data migration case)
   if (project.url && project.url.includes("github.com") && !project.github) {
     links.push(
       `\\href{${project.url}}{\\textbf{\\textcolor{blue}{\\underline{GitHub}}}}`
@@ -228,20 +221,25 @@ ${(exp.bullets || [])
 \\section{Projects}
   \\resumeSubHeadingListStart
 ${(data.projects || [])
-  .map(
-    (proj) => `    \\resumeProjectHeading
+  .map((proj) => {
+    const hasBullets = proj.bullets && proj.bullets.length > 0;
+    return `    \\resumeProjectHeading
       {\\textbf{${escapeLatex(proj.name || "")}}${buildProjectLinks(
       proj
     )} $|$ \\emph{${(proj.tech || [])
       .map((t) => escapeLatex(t || ""))
       .join(", ")}}}{${escapeLatex(proj?.duration || "")}}
-      \\resumeItemListStart
+${
+  hasBullets
+    ? `      \\resumeItemListStart
 ${(proj.bullets || [])
   .map((b) => `        \\resumeItem{${escapeLatex(b || "")}}`)
   .join("\n")}
-      \\resumeItemListEnd
-`
-  )
+      \\resumeItemListEnd`
+    : ""
+}
+`;
+  })
   .join("\n")}
   \\resumeSubHeadingListEnd
 
@@ -347,8 +345,8 @@ function getTemplate2(data: ResumeData): string {
 \\begin{center}
   {\\LARGE\\bfseries ${data.firstName.toUpperCase()} ${data.lastName.toUpperCase()}}\\\\[2pt]
   \\small
-  ${data.phone} \\,|\\, 
-  \\href{mailto:${data.email}}{${data.email}}${
+  ${escapeLatex(data.phone)} \\,|\\, 
+  \\href{mailto:${data.email}}{${escapeLatex(data.email)}}${
     data.github ? ` \\,|\\, \\href{${data.github}}{GitHub}` : ""
   }${data.linkedin ? ` \\,|\\, \\href{${data.linkedin}}{LinkedIn}` : ""}${
     data.portfolio ? ` \\,|\\, \\href{${data.portfolio}}{Portfolio}` : ""
@@ -410,25 +408,37 @@ ${exp.bullets.map((bullet) => `  \\item ${escapeLatex(bullet)}`).join("\n")}
 ${data.projects
   .map((project) => {
     const links: string[] = [];
-    if (project.github) links.push(`\\href{${project.github}}{GitHub}`);
-    if (project.url) links.push(`\\href{${project.url}}{Live}`);
+
+    // Live link
+    if (project.url && !project.url.includes("github.com")) {
+      links.push(`\\href{${project.url}}{Live}`);
+    }
+
+    // GitHub link
+    if (project.github) {
+      links.push(`\\href{${project.github}}{GitHub}`);
+    }
+
+    // Fallback: url is GitHub
+    if (project.url && project.url.includes("github.com") && !project.github) {
+      links.push(`\\href{${project.url}}{GitHub}`);
+    }
+
     const linkStr =
       links.length > 0 ? ` \\hfill \\textit{${links.join(" | ")}}` : "";
+
+    const hasBullets = project.bullets && project.bullets.length > 0;
 
     return `\\textbf{${escapeLatex(project.name)}${
       project.description ? " -- " + escapeLatex(project.description) : ""
     }}${linkStr}
-\\begin{itemize}[label=--]
 ${
-  project.bullets && project.bullets.length > 0
-    ? project.bullets
-        .map((bullet) => `  \\item ${escapeLatex(bullet)}`)
-        .join("\n")
-    : project.description
-    ? `  \\item ${escapeLatex(project.description)}`
+  hasBullets && project.bullets
+    ? `\\begin{itemize}[label=--]
+${project.bullets.map((bullet) => `  \\item ${escapeLatex(bullet)}`).join("\n")}
+\\end{itemize}`
     : ""
 }
-\\end{itemize}
 `;
   })
   .join("\n")}

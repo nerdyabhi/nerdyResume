@@ -149,7 +149,7 @@ export const handleDocument = async (ctx: MyContext) => {
     const urls = extractProfileURLs(extractedText);
 
     // Preview message
-    const preview = extractedText;
+    const preview = extractedText.slice(0, 900) + "....";
     let msg = `✅ Extracted ${totalPages}-page PDF!\n\n`;
 
     if (linkPairs.length) {

@@ -228,6 +228,7 @@ export class ProfileRepository {
         description: proj.description,
         tech: proj.tech || [],
         url: proj.url || '',
+        githubUrl:proj.githubUrl,
         bullets: proj.bullets || [], 
       }));
     }

@@ -86,7 +86,6 @@ Don't make up information - capture exactly what's in the resume.`,
           )
           .optional(),
 
-        // ✅ FIXED: Added github field for projects
         projects: z
           .array(
             z.object({
@@ -95,7 +94,10 @@ Don't make up information - capture exactly what's in the resume.`,
               duration: z.string().optional(),
               tech: z.array(z.string()),
               url: z.string().optional().describe("Live demo or project URL"),
-              github: z.string().optional().describe("GitHub repository URL"), // ✅ NEW
+              githubUrl: z
+                .string()
+                .optional()
+                .describe("GitHub repository URL"),
               bullets: z
                 .array(z.string())
                 .optional()
@@ -119,7 +121,6 @@ Don't make up information - capture exactly what's in the resume.`,
         skills: z.array(z.string()).min(3),
         achievements: z.array(z.string()).optional(),
 
-        // ✅ ENHANCED: More profile links
         profileLinks: z
           .object({
             github: z.string().optional().describe("GitHub profile URL"),
