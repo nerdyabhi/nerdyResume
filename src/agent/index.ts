@@ -6,9 +6,23 @@ import { saveProfileTool } from "./tools/SaveProfileTool.ts";
 import { getUserProfileTool } from "./tools/getUserProfile.ts";
 import { getUserMemoriesTool } from "./tools/getUserMemories.ts";
 import { generateResumePDFTool } from "./tools/resume-generator.ts";
+import { trimMessages } from "@langchain/core/messages";
 
 const memory = new MemorySaver();
-// src/agent/index.ts
+
+const preModelHook = async (state: any) => {
+  const trimmed = await trimMessages(state.messages, {
+    strategy: "last",
+    maxTokens: 100000,
+    includeSystem: true,
+    tokenCounter: openAiLLM
+  });
+  return { messages: trimmed };
+};
+
+
+
+
 export const agent = createReactAgent({
   llm: openAiLLM,
   tools: [
@@ -18,6 +32,7 @@ export const agent = createReactAgent({
     generateResumePDFTool,
   ],
   checkpointer: memory,
+  preModelHook,
   messageModifier: `You are NerdyResume, a friendly AI resume assistant 🤖
 
 **RESUME GENERATION FLOW (when user asks to generate/create resume):**

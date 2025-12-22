@@ -4,6 +4,7 @@ import { latexToPDF } from "../latex-to-pdf.ts";
 import z from "zod";
 import { getResumeTemplate } from "../../templates/resume-templates.ts";
 import { resumeDataSchema } from "../../schemas/resume-data-schema.ts";
+import { improveResumeDesign } from "./resume-validtor.ts";
 
 export const generateResumePDFTool = tool(
   async ({ userProfile, jobDescription, templateId }) => {
@@ -12,7 +13,8 @@ export const generateResumePDFTool = tool(
       
       const resumeData = await generateResumeData(userProfile, jobDescription);
       
-      const latexCode = getResumeTemplate(resumeData, templateId);
+      const rawLatexCode = getResumeTemplate(resumeData, templateId);
+      const latexCode = await improveResumeDesign(rawLatexCode)
 
       // Step 3: Validate LaTeX
       if (

@@ -7,14 +7,6 @@ import { trimMessages } from "@langchain/core/messages";
 
 const resumeMemory = new MemorySaver();
 
-function preModelHook(state: any) {
-  const trimmedMessages = trimMessages(state.messages, {
-    strategy: "last",
-    maxTokens: 8000,  // Keep only ~8k tokens of history
-    startOn: "human",
-    includeSystem: true,  // Always keep system message
-  });
-}
 
 export const resumeAgent = createReactAgent({
   llm: openAiLLM,

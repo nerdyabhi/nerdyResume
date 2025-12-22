@@ -7,9 +7,9 @@ export const resumeDataSchema = z.object({
   lastName: z.string(),
   email: z.string().email(),
   phone: z.string(),
-  linkedin: urlField,
-  github: urlField,
-  portfolio: urlField,
+  linkedin: urlField.optional(),
+  github: urlField.optional(),
+  portfolio: urlField.optional(),
   
   summary: z.string().optional().describe("2-3 sentence professional summary"),
   
@@ -23,8 +23,8 @@ export const resumeDataSchema = z.object({
   })),
   
   experience: z.array(z.object({
-    company: z.string(),
-    position: z.string(),
+    position: z.string(),      // ← CHANGED: was company
+    company: z.string(),       // ← CHANGED: was position  
     location: z.string().optional(),
     duration: z.string(),
     bullets: z.array(z.string()).min(1),
@@ -32,17 +32,22 @@ export const resumeDataSchema = z.object({
   
   projects: z.array(z.object({
     name: z.string(),
-    description: z.string(),
+    description: z.string(),   // ← Used as duration in template
     tech: z.array(z.string()),
-    url: urlField,
+    url: urlField.optional(),  // ← Demo/project URL
+    github: urlField.optional(), // ← GitHub repo URL
     bullets: z.array(z.string()).optional(),
+    duration:z.string().optional()
   })).min(1).describe("Include ALL projects from profile"),
   
   skills: z.object({
-    languages: z.array(z.string()),
+    languages: z.array(z.string()).min(1),
     frameworks: z.array(z.string()).optional(),
     tools: z.array(z.string()).optional(),
     platforms: z.array(z.string()).optional(),
+    databases: z.array(z.string()).optional(),  // ← Template uses this
+    libraries: z.array(z.string()).optional(),  // ← Template uses this
+    concepts: z.array(z.string()).optional(),   // ← Template uses this
   }),
   
   achievements: z.array(z.string()).optional(),
