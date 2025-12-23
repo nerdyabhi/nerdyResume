@@ -24,13 +24,13 @@ export async function handleMessage(ctx: MyContext) {
   }
 
   const key = `ratelimit:messages:${userId}`;
-  const limit = 20;
-  const window = 60;
+  const limit = 70;
+  const window = 60 * 60;
   const count = await redis.get(key);
   const current = count ? parseInt(count) : 0;
 
   if (current >= limit) {
-    await redis.setex(cooldownKey, 60, "1"); // 60 second cooldown
+    await redis.setex(cooldownKey, 60, "1");
 
     return {
       allowed: false,
