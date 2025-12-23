@@ -1,7 +1,6 @@
-import { z } from "zod";
-import { resumeDataSchema } from "../schemas/resume-data-schema.ts";
+import { type ResumeData } from "../schemas/resume-data-schema.ts";
 
-type ResumeData = z.infer<typeof resumeDataSchema>;
+// ============= ESCAPE LATEX =============
 
 function escapeLatex(text: string): string {
   if (!text) return "";
@@ -18,85 +17,264 @@ function escapeLatex(text: string): string {
     .replace(/\%/g, "\\%");
 }
 
-function buildHeaderLinks(data: ResumeData): string {
+// ============= HEADER LINKS =============
+
+function buildHeaderLinks(header: ResumeData["header"]): string {
   const links: string[] = [];
 
   links.push(
-    `\\href{mailto:${data.email}}{\\underline{${escapeLatex(data.email)}}}`
+    `\\href{mailto:${header.email}}{\\underline{${escapeLatex(header.email)}}}`
   );
 
-  if (data.linkedin) {
-    const handle = data.linkedin.split("/").pop() || data.linkedin;
+  if (header.linkedin && header.linkedin.trim() !== "") {
+    const handle = header.linkedin.split("/").pop() || "";
     links.push(
-      `\\href{${data.linkedin}}{\\underline{linkedin.com/in/${escapeLatex(
+      `\\href{${header.linkedin}}{\\underline{linkedin.com/in/${escapeLatex(
         handle
       )}}}`
     );
   }
 
-  if (data.github) {
-    const handle = data.github.split("/").pop() || data.github;
+  if (header.github && header.github.trim() !== "") {
+    const handle = header.github.split("/").pop() || "";
     links.push(
-      `\\href{${data.github}}{\\underline{github.com/${escapeLatex(handle)}}}`
+      `\\href{${header.github}}{\\underline{github.com/${escapeLatex(handle)}}}`
     );
   }
 
-  if (data.portfolio) {
-    const display = data.portfolio
+  if (header.portfolio && header.portfolio.trim() !== "") {
+    const display = header.portfolio
       .replace(/https?:\/\/(www\.)?/, "")
       .split("/")[0];
     links.push(
-      `\\href{${data.portfolio}}{\\underline{${escapeLatex(display || "")}}}`
+      `\\href{${header.portfolio}}{\\underline{${escapeLatex(display || "")}}}`
     );
   }
 
   return links.join(" $|$ ");
 }
 
-function buildProjectLinks(project: ResumeData["projects"][0]): string {
-  const links: string[] = [];
+function buildItemLinks(links: Array<{ label: string; url: string }>): string {
+  if (!links || links.length === 0) return "";
 
+  const formatted = links.map(
+    (link) =>
+      `\\href{${link.url}}{\\textbf{\\textcolor{blue}{\\underline{${escapeLatex(
+        link.label
+      )}}}}}`
+  );
+
+  return ` $|$ ${formatted.join(" $|$ ")}`;
+}
+
+// ============= TEMPLATE 1: ATS-Optimized =============
+
+function renderSummaryT1(section: any): string {
+  if (!section.content?.text || section.content.text.trim() === "") {
+    return ""; // Skip empty summary
+  }
+
+  return `
+%-----------${section.title.toUpperCase()}-----------
+\\section{${escapeLatex(section.title)}}
+${escapeLatex(section.content.text)}
+`;
+}
+
+function renderGenericT1(section: any): string {
+  // For achievements, certifications, etc.
   if (
-    project.url &&
-    project.url.trim() &&
-    !project.url.includes("github.com")
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
   ) {
-    links.push(
-      `\\href{${project.url}}{\\textbf{\\textcolor{blue}{\\underline{Live}}}}`
-    );
+    return ""; // Skip empty sections
   }
 
-  if (project.github && project.github.trim()) {
-    links.push(
-      `\\href{${project.github}}{\\textbf{\\textcolor{blue}{\\underline{GitHub}}}}`
-    );
+  return `
+%-----------${section.title.toUpperCase()}-----------
+\\section{${escapeLatex(section.title)}}
+  \\resumeItemListStart
+${section.content.items
+  .map((item: string) => `    \\resumeItem{${escapeLatex(item)}}`)
+  .join("\n")}
+  \\resumeItemListEnd
+`;
+}
+
+function renderExperienceT1(section: any): string {
+  if (
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
+  ) {
+    return "";
   }
 
-  if (project.url && project.url.includes("github.com") && !project.github) {
-    links.push(
-      `\\href{${project.url}}{\\textbf{\\textcolor{blue}{\\underline{GitHub}}}}`
-    );
+  return `
+%-----------${section.title.toUpperCase()}-----------
+\\section{${escapeLatex(section.title)}}
+  \\resumeSubHeadingListStart
+${section.content.items
+  .filter((item: any) => item && item.heading && Array.isArray(item.bullets))
+  .map(
+    (item: any) => `    \\resumeSubheading
+      {${escapeLatex(item.heading)}}{${escapeLatex(item.meta || "")}}
+      {${escapeLatex(item.subheading || "")}}{}
+      \\resumeItemListStart
+${item.bullets
+  .map((b: string) => `        \\resumeItem{${escapeLatex(b)}}`)
+  .join("\n")}
+      \\resumeItemListEnd`
+  )
+  .join("\n")}
+  \\resumeSubHeadingListEnd
+`;
+}
+
+function renderProjectsT1(section: any): string {
+  if (
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
+  ) {
+    return "";
   }
 
-  return links.length > 0 ? ` $|$ ${links.join(" $|$ ")}` : "";
+  return `
+%-----------${section.title.toUpperCase()}-----------
+\\section{${escapeLatex(section.title)}}
+  \\resumeSubHeadingListStart
+${section.content.items
+  .filter((item: any) => item && item.heading && Array.isArray(item.bullets))
+  .map((item: any) => {
+    const links = buildItemLinks(item.links || []);
+    return `    \\resumeProjectHeading
+      {\\textbf{${escapeLatex(item.heading)}}${links}${
+      item.subheading && item.subheading.trim() !== ""
+        ? ` $|$ \\emph{${escapeLatex(item.subheading)}}`
+        : ""
+    }}{${escapeLatex(item.meta || "")}}
+      \\resumeItemListStart
+${item.bullets
+  .map((b: string) => `        \\resumeItem{${escapeLatex(b)}}`)
+  .join("\n")}
+      \\resumeItemListEnd`;
+  })
+  .join("\n")}
+  \\resumeSubHeadingListEnd
+`;
+}
+
+function renderSkillsT1(section: any): string {
+  if (
+    !section.content?.categories ||
+    !Array.isArray(section.content.categories) ||
+    section.content.categories.length === 0
+  ) {
+    return "";
+  }
+
+  return `
+%-----------${section.title.toUpperCase()}-----------
+\\section{${escapeLatex(section.title)}}
+  \\begin{itemize}[leftmargin=0.15in, label={}]
+    \\small{
+${section.content.categories
+  .filter(
+    (cat: any) =>
+      cat && cat.name && Array.isArray(cat.items) && cat.items.length > 0
+  )
+  .map(
+    (cat: any) =>
+      `      \\item \\textbf{${escapeLatex(cat.name)}}: ${cat.items
+        .map((i: string) => escapeLatex(i))
+        .join(", ")}`
+  )
+  .join("\n")}
+    }
+  \\end{itemize}
+`;
+}
+
+function renderEducationT1(section: any): string {
+  if (
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
+  ) {
+    return "";
+  }
+
+  return `
+%-----------${section.title.toUpperCase()}-----------
+\\section{${escapeLatex(section.title)}}
+  \\resumeSubHeadingListStart
+${section.content.items
+  .filter((edu: any) => edu && edu.degree && edu.institution && edu.duration)
+  .map(
+    (edu: any) => `    \\resumeSubheading
+      {${escapeLatex(edu.institution)}}{}
+      {${escapeLatex(edu.degree)}}{${escapeLatex(edu.duration)}}
+${
+  edu.gpa && edu.gpa.trim() !== ""
+    ? `      \\resumeItem{CGPA: \\textbf{${escapeLatex(edu.gpa)}}}`
+    : ""
+}
+${
+  edu.details && Array.isArray(edu.details) && edu.details.length > 0
+    ? `      \\resumeItem{Relevant Coursework: ${edu.details
+        .map((d: string) => escapeLatex(d))
+        .join(", ")}}`
+    : ""
+}`
+  )
+  .join("\n")}
+  \\resumeSubHeadingListEnd
+`;
+}
+
+function renderSectionT1(section: any): string {
+  if (!section || !section.visible) return "";
+
+  try {
+    switch (section.type) {
+      case "summary":
+        return renderSummaryT1(section);
+      case "experience":
+        return renderExperienceT1(section);
+      case "projects":
+        return renderProjectsT1(section);
+      case "skills":
+        return renderSkillsT1(section);
+      case "education":
+        return renderEducationT1(section);
+      case "achievements":
+      case "certifications":
+        return renderGenericT1(section);
+      default:
+        return "";
+    }
+  } catch (error) {
+    console.error(`❌ Failed to render section ${section?.type}:`, error);
+    return "";
+  }
 }
 
 function getTemplate1(data: ResumeData): string {
+  const sortedSections = [...data.sections].sort((a, b) => a.order - b.order);
+
   return `\\documentclass[letterpaper,10pt]{article}
 
 \\usepackage[utf8]{inputenc}
 \\usepackage[T1]{fontenc}
-\\usepackage{marvosym}
 \\usepackage{latexsym}
 \\usepackage[empty]{fullpage}
 \\usepackage{titlesec}
-\\usepackage{marvosym}
 \\usepackage[usenames,dvipsnames]{color}
-\\usepackage{verbatim}
 \\usepackage{enumitem}
 \\usepackage[hidelinks]{hyperref}
 \\usepackage{fancyhdr}
-\\usepackage[english]{babel}
 \\usepackage{tabularx}
 \\input{glyphtounicode}
 
@@ -147,8 +325,6 @@ function getTemplate1(data: ResumeData): string {
     \\end{tabular*}\\vspace{-7pt}
 }
 
-\\newcommand{\\resumeSubItem}[1]{\\resumeItem{#1}\\vspace{-4pt}}
-
 \\renewcommand\\labelitemii{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}
 
 \\newcommand{\\resumeSubHeadingListStart}{\\begin{itemize}[leftmargin=0.15in, label={}]}
@@ -160,152 +336,208 @@ function getTemplate1(data: ResumeData): string {
 
 %----------HEADING----------
 \\begin{center}
-    \\textbf{\\Huge \\scshape ${escapeLatex(data.firstName)} ${escapeLatex(
-    data.lastName
-  )}} \\\\ \\vspace{1pt}
-    \\small ${escapeLatex(data.phone)} $|$ ${buildHeaderLinks(data)}
+    \\textbf{\\Huge \\scshape ${escapeLatex(
+      data.header.firstName
+    )} ${escapeLatex(data.header.lastName)}} \\\\ \\vspace{1pt}
+    \\small ${escapeLatex(data.header.phone)} $|$ ${buildHeaderLinks(
+    data.header
+  )}
 \\end{center}
 
-${
-  data.summary
-    ? `
-%-----------SUMMARY-----------
-\\section{Professional Summary}
-${escapeLatex(data.summary)}
-`
-    : ""
-}
-
-%-----------EDUCATION-----------
-\\section{Education}
-  \\resumeSubHeadingListStart
-${data.education
-  .map(
-    (edu) => `    \\resumeSubheading
-      {${escapeLatex(edu.institution || "")}}{${
-      edu.location ? escapeLatex(edu.location) : ""
-    }}
-      {${escapeLatex(edu.degree || "")}}{${escapeLatex(edu.duration || "")}}
-${edu.gpa ? `      \\resumeItem{CGPA: \\textbf{${escapeLatex(edu.gpa)}}}` : ""}`
-  )
-  .join("\n")}
-  \\resumeSubHeadingListEnd
-
-${
-  data.experience && data.experience.length > 0
-    ? `
-%-----------EXPERIENCE-----------
-\\section{Experience}
-  \\resumeSubHeadingListStart
-${data.experience
-  .map(
-    (exp) => `    \\resumeSubheading
-      {${escapeLatex(exp.position || "")}}{${escapeLatex(exp.duration || "")}}
-      {${escapeLatex(exp.company || "")}}{${
-      exp.location ? escapeLatex(exp.location) : ""
-    }}
-      \\resumeItemListStart
-${(exp.bullets || [])
-  .map((bullet) => `        \\resumeItem{${escapeLatex(bullet || "")}}`)
-  .join("\n")}
-      \\resumeItemListEnd
-`
-  )
-  .join("\n")}
-  \\resumeSubHeadingListEnd
-`
-    : ""
-}
-
-%-----------PROJECTS-----------
-\\section{Projects}
-  \\resumeSubHeadingListStart
-${(data.projects || [])
-  .map((proj) => {
-    const hasBullets = proj.bullets && proj.bullets.length > 0;
-    return `    \\resumeProjectHeading
-      {\\textbf{${escapeLatex(proj.name || "")}}${buildProjectLinks(
-      proj
-    )} $|$ \\emph{${(proj.tech || [])
-      .map((t) => escapeLatex(t || ""))
-      .join(", ")}}}{${escapeLatex(proj?.duration || "")}}
-${
-  hasBullets
-    ? `      \\resumeItemListStart
-${(proj.bullets || [])
-  .map((b) => `        \\resumeItem{${escapeLatex(b || "")}}`)
-  .join("\n")}
-      \\resumeItemListEnd`
-    : ""
-}
-`;
-  })
-  .join("\n")}
-  \\resumeSubHeadingListEnd
-
-${
-  data.achievements && data.achievements.length > 0
-    ? `
-%-----------ACHIEVEMENTS-----------
-\\section{Achievements}
-  \\resumeItemListStart
-${data.achievements
-  .map((ach) => `    \\resumeItem{${escapeLatex(ach || "")}}`)
-  .join("\n")}
-  \\resumeItemListEnd
-`
-    : ""
-}
-
-%-----------TECHNICAL SKILLS-----------
-\\section{Technical Skills}
-  \\begin{itemize}[leftmargin=0.15in, label={}]
-    \\small{
-      \\item \\textbf{Languages}: ${(data.skills?.languages || [])
-        .map((l) => escapeLatex(l || ""))
-        .join(", ")}
-      ${
-        data.skills?.frameworks && data.skills.frameworks.length > 0
-          ? `\\item \\textbf{Frameworks}: ${data.skills.frameworks
-              .map((f) => escapeLatex(f || ""))
-              .join(", ")}`
-          : ""
-      }
-      ${
-        data.skills?.databases && data.skills.databases.length > 0
-          ? `\\item \\textbf{Databases}: ${data.skills.databases
-              .map((d) => escapeLatex(d || ""))
-              .join(", ")}`
-          : ""
-      }
-      ${
-        data.skills?.tools && data.skills.tools.length > 0
-          ? `\\item \\textbf{Tools}: ${data.skills.tools
-              .map((t) => escapeLatex(t || ""))
-              .join(", ")}`
-          : ""
-      }
-      ${
-        data.skills?.libraries && data.skills.libraries.length > 0
-          ? `\\item \\textbf{Libraries}: ${data.skills.libraries
-              .map((l) => escapeLatex(l || ""))
-              .join(", ")}`
-          : ""
-      }
-      ${
-        data.skills?.concepts && data.skills.concepts.length > 0
-          ? `\\item \\textbf{Concepts}: ${data.skills.concepts
-              .map((c) => escapeLatex(c || ""))
-              .join(", ")}`
-          : ""
-      }
-    }
-  \\end{itemize}
+${sortedSections.map((section) => renderSectionT1(section)).join("\n")}
 
 \\end{document}`;
 }
 
+// ============= TEMPLATE 2: Modern Clean =============
+
+function renderSummaryT2(section: any): string {
+  if (!section.content?.text || section.content.text.trim() === "") {
+    return "";
+  }
+
+  return `
+%==================== ${section.title.toUpperCase()} ====================
+\\section*{${section.title.toUpperCase()}}
+${escapeLatex(section.content.text)}
+`;
+}
+
+function renderGenericT2(section: any): string {
+  if (
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
+  ) {
+    return "";
+  }
+
+  return `
+%==================== ${section.title.toUpperCase()} ====================
+\\section*{${section.title.toUpperCase()}}
+\\begin{itemize}[label=\\textbullet]
+${section.content.items
+  .map((item: string) => `  \\item ${escapeLatex(item)}`)
+  .join("\n")}
+\\end{itemize}
+`;
+}
+
+function renderExperienceT2(section: any): string {
+  if (
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
+  ) {
+    return "";
+  }
+
+  return `
+%==================== ${section.title.toUpperCase()} ====================
+\\section*{${section.title.toUpperCase()}}
+${section.content.items
+  .filter((item: any) => item && item.heading && Array.isArray(item.bullets))
+  .map(
+    (item: any) =>
+      `\\textbf{${escapeLatex(item.heading)}} \\hfill \\textit{${escapeLatex(
+        item.meta || ""
+      )}}\\\\
+\\textit{${escapeLatex(item.subheading || "")}}
+\\begin{itemize}[label=--]
+${item.bullets.map((b: string) => `  \\item ${escapeLatex(b)}`).join("\n")}
+\\end{itemize}
+`
+  )
+  .join("\n")}
+`;
+}
+
+function renderProjectsT2(section: any): string {
+  if (
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
+  ) {
+    return "";
+  }
+
+  return `
+%==================== ${section.title.toUpperCase()} ====================
+\\section*{${section.title.toUpperCase()}}
+${section.content.items
+  .filter((item: any) => item && item.heading && Array.isArray(item.bullets))
+  .map((item: any) => {
+    const links =
+      item.links && Array.isArray(item.links) && item.links.length > 0
+        ? item.links
+            .map((l: any) => `\\href{${l.url}}{${escapeLatex(l.label)}}`)
+            .join(" | ")
+        : "";
+    const linkStr = links ? ` \\hfill \\textit{${links}}` : "";
+
+    return `\\textbf{${escapeLatex(item.heading)}${
+      item.subheading && item.subheading.trim() !== ""
+        ? " -- " + escapeLatex(item.subheading)
+        : ""
+    }}${linkStr}
+\\begin{itemize}[label=--]
+${item.bullets.map((b: string) => `  \\item ${escapeLatex(b)}`).join("\n")}
+\\end{itemize}
+`;
+  })
+  .join("\n")}
+`;
+}
+
+function renderSkillsT2(section: any): string {
+  if (
+    !section.content?.categories ||
+    !Array.isArray(section.content.categories) ||
+    section.content.categories.length === 0
+  ) {
+    return "";
+  }
+
+  return `
+%==================== ${section.title.toUpperCase()} ====================
+\\section*{${section.title.toUpperCase()}}
+\\begin{itemize}[label=\\textbullet]
+${section.content.categories
+  .filter(
+    (cat: any) =>
+      cat && cat.name && Array.isArray(cat.items) && cat.items.length > 0
+  )
+  .map(
+    (cat: any) =>
+      `  \\item \\textbf{${escapeLatex(cat.name)}}: ${cat.items
+        .map((i: string) => escapeLatex(i))
+        .join(", ")}`
+  )
+  .join("\n")}
+\\end{itemize}
+`;
+}
+
+function renderEducationT2(section: any): string {
+  if (
+    !section.content?.items ||
+    !Array.isArray(section.content.items) ||
+    section.content.items.length === 0
+  ) {
+    return "";
+  }
+
+  return `
+%==================== ${section.title.toUpperCase()} ====================
+\\section*{${section.title.toUpperCase()}}
+\\begin{tabularx}{\\textwidth}{|>{\\centering\\arraybackslash}p{1.6cm}|X|X|>{\\centering\\arraybackslash}p{1.8cm}|}
+\\hline
+\\textbf{Year} & \\textbf{Degree} & \\textbf{Institute} & \\textbf{CGPA} \\\\ \\hline
+${section.content.items
+  .filter((edu: any) => edu && edu.degree && edu.institution && edu.duration)
+  .map(
+    (edu: any) =>
+      `${escapeLatex(edu.duration)} & ${escapeLatex(
+        edu.degree
+      )} & ${escapeLatex(edu.institution)} & ${
+        edu.gpa && edu.gpa.trim() !== "" ? escapeLatex(edu.gpa) : "N/A"
+      } \\\\ \\hline`
+  )
+  .join("\n")}
+\\end{tabularx}
+`;
+}
+
+function renderSectionT2(section: any): string {
+  if (!section || !section.visible) return "";
+
+  try {
+    switch (section.type) {
+      case "summary":
+        return renderSummaryT2(section);
+      case "experience":
+        return renderExperienceT2(section);
+      case "projects":
+        return renderProjectsT2(section);
+      case "skills":
+        return renderSkillsT2(section);
+      case "education":
+        return renderEducationT2(section);
+      case "achievements":
+      case "certifications":
+        return renderGenericT2(section);
+      default:
+        return "";
+    }
+  } catch (error) {
+    console.error(`❌ Failed to render section ${section?.type}:`, error);
+    return "";
+  }
+}
+
 function getTemplate2(data: ResumeData): string {
+  const sortedSections = [...data.sections].sort((a, b) => a.order - b.order);
+
   return `\\documentclass[a4paper,11pt]{article}
 
 % Packages
@@ -343,159 +575,30 @@ function getTemplate2(data: ResumeData): string {
 
 %==================== HEADER ====================
 \\begin{center}
-  {\\LARGE\\bfseries ${data.firstName.toUpperCase()} ${data.lastName.toUpperCase()}}\\\\[2pt]
+  {\\LARGE\\bfseries ${data.header.firstName.toUpperCase()} ${data.header.lastName.toUpperCase()}}\\\\[2pt]
   \\small
-  ${escapeLatex(data.phone)} \\,|\\, 
-  \\href{mailto:${data.email}}{${escapeLatex(data.email)}}${
-    data.github ? ` \\,|\\, \\href{${data.github}}{GitHub}` : ""
-  }${data.linkedin ? ` \\,|\\, \\href{${data.linkedin}}{LinkedIn}` : ""}${
-    data.portfolio ? ` \\,|\\, \\href{${data.portfolio}}{Portfolio}` : ""
+  ${escapeLatex(data.header.phone)} \\,|\\, 
+  \\href{mailto:${data.header.email}}{${escapeLatex(data.header.email)}}${
+    data.header.github && data.header.github.trim() !== ""
+      ? ` \\,|\\, \\href{${data.header.github}}{GitHub}`
+      : ""
+  }${
+    data.header.linkedin && data.header.linkedin.trim() !== ""
+      ? ` \\,|\\, \\href{${data.header.linkedin}}{LinkedIn}`
+      : ""
+  }${
+    data.header.portfolio && data.header.portfolio.trim() !== ""
+      ? ` \\,|\\, \\href{${data.header.portfolio}}{Portfolio}`
+      : ""
   }
 \\end{center}
 
-${
-  data.summary
-    ? `
-%==================== SUMMARY ====================
-\\section*{SUMMARY}
-${escapeLatex(data.summary)}
-`
-    : ""
+${sortedSections.map((section) => renderSectionT2(section)).join("\n")}
+
+\\end{document}`;
 }
 
-%==================== EDUCATION ====================
-\\section*{EDUCATION}
-\\begin{tabularx}{\\textwidth}{|>{\\centering\\arraybackslash}p{1.6cm}|X|X|>{\\centering\\arraybackslash}p{1.8cm}|}
-\\hline
-\\textbf{Year} & \\textbf{Degree/Certificate} & \\textbf{Institute} & \\textbf{CGPA} \\\\ \\hline
-${data.education
-  .map(
-    (edu) =>
-      `${escapeLatex(edu.duration)} & ${escapeLatex(
-        edu.degree
-      )} & ${escapeLatex(edu.institution)}${
-        edu.location ? ", " + escapeLatex(edu.location) : ""
-      } & ${edu.gpa ? escapeLatex(edu.gpa) : "N/A"} \\\\ \\hline`
-  )
-  .join("\n")}
-\\end{tabularx}
-
-${
-  data.experience && data.experience.length > 0
-    ? `
-%==================== EXPERIENCE ====================
-\\section*{EXPERIENCE}
-${data.experience
-  .map(
-    (exp) => `\\textbf{${escapeLatex(
-      exp.position
-    )}} \\hfill \\textit{${escapeLatex(exp.duration)}}\\\\
-\\textit{${escapeLatex(exp.company)}} \\hfill \\textit{${
-      exp.location ? escapeLatex(exp.location) : "Remote"
-    }}
-\\begin{itemize}[label=--]
-${exp.bullets.map((bullet) => `  \\item ${escapeLatex(bullet)}`).join("\n")}
-\\end{itemize}
-`
-  )
-  .join("\n")}
-`
-    : ""
-}
-
-%==================== PROJECTS ====================
-\\section*{PROJECTS}
-${data.projects
-  .map((project) => {
-    const links: string[] = [];
-
-    // Live link
-    if (project.url && !project.url.includes("github.com")) {
-      links.push(`\\href{${project.url}}{Live}`);
-    }
-
-    // GitHub link
-    if (project.github) {
-      links.push(`\\href{${project.github}}{GitHub}`);
-    }
-
-    // Fallback: url is GitHub
-    if (project.url && project.url.includes("github.com") && !project.github) {
-      links.push(`\\href{${project.url}}{GitHub}`);
-    }
-
-    const linkStr =
-      links.length > 0 ? ` \\hfill \\textit{${links.join(" | ")}}` : "";
-
-    const hasBullets = project.bullets && project.bullets.length > 0;
-
-    return `\\textbf{${escapeLatex(project.name)}${
-      project.description ? " -- " + escapeLatex(project.description) : ""
-    }}${linkStr}
-${
-  hasBullets && project.bullets
-    ? `\\begin{itemize}[label=--]
-${project.bullets.map((bullet) => `  \\item ${escapeLatex(bullet)}`).join("\n")}
-\\end{itemize}`
-    : ""
-}
-`;
-  })
-  .join("\n")}
-
-%==================== TECHNICAL SKILLS ====================
-\\section*{TECHNICAL SKILLS}
-\\begin{itemize}[label=\\textbullet]
-  \\item \\textbf{Languages}: ${data.skills.languages
-    .map((l) => escapeLatex(l))
-    .join(", ")}
-  ${
-    data.skills.frameworks && data.skills.frameworks.length > 0
-      ? `\\item \\textbf{Frameworks}: ${data.skills.frameworks
-          .map((f) => escapeLatex(f))
-          .join(", ")}`
-      : ""
-  }
-  ${
-    data.skills.tools && data.skills.tools.length > 0
-      ? `\\item \\textbf{Tools \\& Infra}: ${data.skills.tools
-          .map((t) => escapeLatex(t))
-          .join(", ")}`
-      : ""
-  }
-  ${
-    data.skills.databases && data.skills.databases.length > 0
-      ? `\\item \\textbf{Databases}: ${data.skills.databases
-          .map((d) => escapeLatex(d))
-          .join(", ")}`
-      : ""
-  }
-  ${
-    data.skills.platforms && data.skills.platforms.length > 0
-      ? `\\item \\textbf{Platforms}: ${data.skills.platforms
-          .map((p) => escapeLatex(p))
-          .join(", ")}`
-      : ""
-  }
-\\end{itemize}
-
-${
-  data.achievements && data.achievements.length > 0
-    ? `
-%==================== ACHIEVEMENTS ====================
-\\section*{ACHIEVEMENTS \\& CERTIFICATIONS}
-\\begin{itemize}[label=\\textbullet]
-${data.achievements
-  .map((achievement) => `  \\item ${escapeLatex(achievement)}`)
-  .join("\n")}
-\\end{itemize}
-`
-    : ""
-}
-
-\\end{document}
-`;
-}
+// ============= EXPORT =============
 
 export function getResumeTemplate(
   data: ResumeData,
@@ -511,5 +614,4 @@ export function getResumeTemplate(
   }
 }
 
-export const template1 = getTemplate1;
-export const template2 = getTemplate2;
+export { getTemplate1 as template1, getTemplate2 as template2 };
