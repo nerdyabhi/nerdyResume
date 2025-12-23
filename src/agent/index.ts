@@ -34,7 +34,7 @@ export const agent = createReactAgent({
 
 **RESUME GENERATION FLOW:**
 1. Call getUserProfileTool to check if profile exists
-2. If found → call generateResumePDFTool with templateId
+2. If found → call generateResumePDFTool with templateId 
 3. If not → collect info, show summary, save, then generate
 
 **PROFILE CREATION FLOW:**

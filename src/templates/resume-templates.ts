@@ -17,7 +17,13 @@ function escapeLatex(text: string): string {
     .replace(/\%/g, "\\%");
 }
 
-// ============= HEADER LINKS =============
+// ============= HELPER FUNCTIONS =============
+
+function cleanMeta(meta: string): string {
+  if (!meta) return "";
+  // Remove "Tech: " or "Tech:" prefix if present
+  return meta.replace(/^Tech:\s*/i, "").trim();
+}
 
 function buildHeaderLinks(header: ResumeData["header"]): string {
   const links: string[] = [];
@@ -71,7 +77,7 @@ function buildItemLinks(links: Array<{ label: string; url: string }>): string {
 
 function renderSummaryT1(section: any): string {
   if (!section.content?.text || section.content.text.trim() === "") {
-    return ""; // Skip empty summary
+    return "";
   }
 
   return `
@@ -82,13 +88,12 @@ ${escapeLatex(section.content.text)}
 }
 
 function renderGenericT1(section: any): string {
-  // For achievements, certifications, etc.
   if (
     !section.content?.items ||
     !Array.isArray(section.content.items) ||
     section.content.items.length === 0
   ) {
-    return ""; // Skip empty sections
+    return "";
   }
 
   return `
@@ -149,12 +154,14 @@ ${section.content.items
   .filter((item: any) => item && item.heading && Array.isArray(item.bullets))
   .map((item: any) => {
     const links = buildItemLinks(item.links || []);
+
+    // ✅ Clean meta to remove "Tech: " prefix and wrap in \emph for italic
+    const cleanedMeta = cleanMeta(item.meta || "");
+
     return `    \\resumeProjectHeading
-      {\\textbf{${escapeLatex(item.heading)}}${links}${
-      item.subheading && item.subheading.trim() !== ""
-        ? ` $|$ \\emph{${escapeLatex(item.subheading)}}`
-        : ""
-    }}{${escapeLatex(item.meta || "")}}
+      {\\textbf{${escapeLatex(item.heading)}}${links}}{\\emph{${escapeLatex(
+      cleanedMeta
+    )}}}
       \\resumeItemListStart
 ${item.bullets
   .map((b: string) => `        \\resumeItem{${escapeLatex(b)}}`)
@@ -179,7 +186,7 @@ function renderSkillsT1(section: any): string {
 %-----------${section.title.toUpperCase()}-----------
 \\section{${escapeLatex(section.title)}}
   \\begin{itemize}[leftmargin=0.15in, label={}]
-    \\small{
+    \\small{\\item{
 ${section.content.categories
   .filter(
     (cat: any) =>
@@ -187,12 +194,12 @@ ${section.content.categories
   )
   .map(
     (cat: any) =>
-      `      \\item \\textbf{${escapeLatex(cat.name)}}: ${cat.items
+      `      \\textbf{${escapeLatex(cat.name)}}: ${cat.items
         .map((i: string) => escapeLatex(i))
-        .join(", ")}`
+        .join(", ")} \\\\`
   )
   .join("\n")}
-    }
+    }}
   \\end{itemize}
 `;
 }
@@ -264,17 +271,18 @@ function renderSectionT1(section: any): string {
 function getTemplate1(data: ResumeData): string {
   const sortedSections = [...data.sections].sort((a, b) => a.order - b.order);
 
-  return `\\documentclass[letterpaper,10pt]{article}
+  return `\\documentclass[letterpaper,11.5pt]{article}
 
-\\usepackage[utf8]{inputenc}
-\\usepackage[T1]{fontenc}
 \\usepackage{latexsym}
 \\usepackage[empty]{fullpage}
 \\usepackage{titlesec}
+\\usepackage{marvosym}
 \\usepackage[usenames,dvipsnames]{color}
+\\usepackage{verbatim}
 \\usepackage{enumitem}
 \\usepackage[hidelinks]{hyperref}
 \\usepackage{fancyhdr}
+\\usepackage[english]{babel}
 \\usepackage{tabularx}
 \\input{glyphtounicode}
 
@@ -292,6 +300,7 @@ function getTemplate1(data: ResumeData): string {
 \\addtolength{\\textheight}{1.0in}
 
 \\urlstyle{same}
+
 \\raggedbottom
 \\raggedright
 \\setlength{\\tabcolsep}{0in}
@@ -301,8 +310,10 @@ function getTemplate1(data: ResumeData): string {
   \\vspace{-4pt}\\scshape\\raggedright\\large
 }{}{0em}{}[\\color{black}\\titlerule \\vspace{-5pt}]
 
+% Ensure that generate pdf is machine readable/ATS parsable
 \\pdfgentounicode=1
 
+%-------------------------
 % Custom commands
 \\newcommand{\\resumeItem}[1]{
   \\item\\small{
@@ -318,12 +329,21 @@ function getTemplate1(data: ResumeData): string {
     \\end{tabular*}\\vspace{-7pt}
 }
 
+\\newcommand{\\resumeSubSubheading}[2]{
+    \\item
+    \\begin{tabular*}{0.97\\textwidth}{l@{\\extracolsep{\\fill}}r}
+      \\textit{\\small#1} & \\textit{\\small #2} \\\\
+    \\end{tabular*}\\vspace{-7pt}
+}
+
 \\newcommand{\\resumeProjectHeading}[2]{
     \\item
     \\begin{tabular*}{0.97\\textwidth}{l@{\\extracolsep{\\fill}}r}
-      \\small#1 & #2 \\\\
+      \\small#1 & \\small#2 \\\\
     \\end{tabular*}\\vspace{-7pt}
 }
+
+\\newcommand{\\resumeSubItem}[1]{\\resumeItem{#1}\\vspace{-4pt}}
 
 \\renewcommand\\labelitemii{$\\vcenter{\\hbox{\\tiny$\\bullet$}}$}
 
@@ -331,6 +351,9 @@ function getTemplate1(data: ResumeData): string {
 \\newcommand{\\resumeSubHeadingListEnd}{\\end{itemize}}
 \\newcommand{\\resumeItemListStart}{\\begin{itemize}}
 \\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \\begin{document}
 
@@ -429,17 +452,21 @@ ${section.content.items
   .map((item: any) => {
     const links =
       item.links && Array.isArray(item.links) && item.links.length > 0
-        ? item.links
-            .map((l: any) => `\\href{${l.url}}{${escapeLatex(l.label)}}`)
+        ? " | " +
+          item.links
+            .map(
+              (l: any) =>
+                `\\href{${l.url}}{\\underline{${escapeLatex(l.label)}}}`
+            )
             .join(" | ")
         : "";
-    const linkStr = links ? ` \\hfill \\textit{${links}}` : "";
 
-    return `\\textbf{${escapeLatex(item.heading)}${
-      item.subheading && item.subheading.trim() !== ""
-        ? " -- " + escapeLatex(item.subheading)
-        : ""
-    }}${linkStr}
+    // ✅ Clean meta to remove "Tech: " prefix (already in \textit)
+    const cleanedMeta = cleanMeta(item.meta || "");
+
+    return `\\noindent\\textbf{${escapeLatex(
+      item.heading
+    )}}${links} \\hfill \\textit{${escapeLatex(cleanedMeta)}}
 \\begin{itemize}[label=--]
 ${item.bullets.map((b: string) => `  \\item ${escapeLatex(b)}`).join("\n")}
 \\end{itemize}

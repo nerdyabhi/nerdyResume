@@ -6,6 +6,7 @@ import { getResumeTemplate } from "../../templates/resume-templates.ts";
 import { resumeDataSchema } from "../../schemas/resume-data-schema.ts";
 import { eventBus, EVENTS } from "../../events/eventBus.ts";
 import type { RunnableConfig } from "@langchain/core/runnables";
+import { improveResumeContent } from "./resume-validtor.ts";
 
 export const generateResumePDFTool = tool(
   async (
@@ -23,7 +24,8 @@ export const generateResumePDFTool = tool(
       );
 
       const resumeData = await generateResumeData(userProfile, jobDescription);
-      const latexCode = getResumeTemplate(resumeData, templateId);
+      const improvedResumeData = await improveResumeContent(resumeData);
+      const latexCode = getResumeTemplate(improvedResumeData, templateId);
 
       const pdfBuffer = await latexToPDF(latexCode);
       // const base64Pdf = pdfBuffer.toString("base64");
@@ -71,30 +73,81 @@ export const generateResumePDFTool = tool(
 async function generateResumeData(profileJson: string, jobDescription: string) {
   const profile = JSON.parse(profileJson);
 
-  const prompt = `Generate valid resume JSON.
+  const prompt = `Generate ATS-optimized resume JSON tailored to the job description.
 
 PROFILE:
 ${JSON.stringify(profile, null, 2)}
 
-JOB:
+TARGET JOB:
 ${jobDescription || "General Software Engineer"}
 
-VALID SECTION TYPES (use EXACTLY these):
-- "experience" → {items: [{heading, subheading, meta, bullets, links}]}
-- "projects" → {items: [{heading, subheading, meta, bullets, links}]}
-- "skills" → {categories: [{name, items}]}
-- "education" → {items: [{degree, institution, duration, gpa, details}]}
-- "summary" → {text: "..."}
-- "achievements" → {items: ["..."]}
-- "certifications" → {items: ["..."]}
+INSTRUCTIONS:
 
-ALL fields required. Use empty string "" or empty array [].
+1. ANALYZE JD: Extract key skills, technologies, and requirements. Use these keywords naturally 2-3 times.
 
-Return valid JSON.`;
+2. TAILOR CONTENT:
+- Prioritize experiences/projects matching JD requirements
+- Use exact JD keywords in bullets and descriptions
+- Quantify all achievements (%, numbers, time, users)
+- Start bullets with action verbs: Built, Designed, Implemented, Optimized, Led
+- Keep most relevant content, shorten less relevant (don't remove)
+
+3. SECTIONS (all required, use "" or [] if empty):
+
+**summary**: {text: "..."} 
+- 2-3 sentences, 40-60 words
+- Lead with years of experience + key skills matching JD
+- End with value proposition
+
+**experience**: {items: [{heading, subheading, meta, bullets, links}]}
+- heading: Job Title | subheading: Company | meta: "Month Year - Month Year"
+- bullets: 3-5 bullets per role using STAR format with metrics
+- links: ALWAYS include as array (can be empty [])
+- 3-5 bullets per role using STAR format with metrics
+- Highlight JD-matching technologies
+
+**projects**: {items: [{heading, subheading, meta, bullets, links}]}
+- Select 3-4 most relevant to JD
+- heading: Project Name | subheading: one-line description | meta: "Tech: ..."
+- bullets: 2-4 bullets with technical complexity and impact
+- links: ALWAYS include as array (can be empty []) - format: [{label: "GitHub", url: "..."}, {label: "Live Demo", url: "..."}]
+- Include GitHub/live demo links if available
+
+**skills**: {categories: [{name, items}]}
+- 4-6 categories: "Programming Languages", "Backend Technologies", "Frontend Technologies", "DevOps & Cloud", "Tools & Technologies"
+- Order by JD relevance within categories
+
+**education**: {items: [{degree(do BTech To bachelor of technology ), institution, duration(in this format : 2022-2026), gpa, details}]}
+- Most recent first | Include relevant coursework in details
+
+**achievements**: {items: [""]}
+- Include LeetCode/competitive programming stats
+- Hackathon wins, awards, open-source contributions
+- Format: "Impact/ranking + specific metric"
+
+**certifications**: {items: [""]}
+- Format: "Name - Issuer (Year)"
+
+4. CRITICAL SCHEMA REQUIREMENTS:
+- links field MUST be present and be an array for experience and projects
+- Even if no links exist, use empty array: "links": []
+- Never omit the links field
+- All fields required (use "" or [] if empty)
+
+5. ATS RULES:
+- Standard headings and job titles
+- No spelling errors or word repetition
+- Keywords from JD distributed naturally
+- All dates in consistent format
+- All fields present (use "" or [] if empty)
+
+6. REQUIRED SCHEMA TYPES: "experience", "projects", "skills", "education", "summary", "achievements", "certifications"
+
+Return valid JSON with ALL sections and ALL required fields.`;
 
   const structuredLLM = gpt4o.withStructuredOutput(resumeDataSchema);
   const resumeData = await structuredLLM.invoke(prompt);
 
-  console.log("✅ Resume generated");
+  console.log("✅ Resume generated with tailored content");
   return resumeData;
 }

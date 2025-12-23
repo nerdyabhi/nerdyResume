@@ -38,11 +38,23 @@ You can now generate resumes with /resume`,
   },
   {
     name: "save_profile",
-    description: `Save user's COMPLETE resume data. Extract EVERYTHING including:
-- ALL project URLs (both GitHub repo AND live demo links)
-- ALL bullet points and achievements
-- ALL profile links (GitHub, LinkedIn, Portfolio, LeetCode, etc.)
-Don't make up information - capture exactly what's in the resume.`,
+    description: `Save user's COMPLETE resume data with ZERO information loss.
+
+CRITICAL - Extract EVERYTHING:
+- ALL bullet points word-for-word (no summarizing)
+- ALL URLs (GitHub, live demos, certificates, profiles)
+- ALL metrics and numbers exactly as written
+- ALL technologies mentioned in each section
+
+DO NOT:
+- Summarize or paraphrase bullets
+- Skip any bullet points
+- Make up information
+- Lose any URLs or links
+
+If resume has 5 bullets for a project, extract all 5.
+If resume has certification links, capture the url of certificates , not the text only`,
+
     schema: z.object({
       profile: z.object({
         name: z.string(),
@@ -119,7 +131,15 @@ Don't make up information - capture exactly what's in the resume.`,
           .describe("Club memberships, community activities"),
 
         skills: z.array(z.string()).min(3),
-        achievements: z.array(z.string()).optional(),
+        achievements: z
+          .array(
+            z
+              .string()
+              .describe(
+                "Any Certification with certification link ( not just text) , Programming profiles , Open Source Contributions , or curricular or non-curricular achievements"
+              )
+          )
+          .optional(),
 
         profileLinks: z
           .object({
