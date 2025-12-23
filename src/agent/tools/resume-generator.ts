@@ -7,6 +7,8 @@ import { resumeDataSchema } from "../../schemas/resume-data-schema.ts";
 import { eventBus, EVENTS } from "../../events/eventBus.ts";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { improveResumeContent } from "./resume-validtor.ts";
+import { redis } from "../../config/redis.ts";
+import { RATE_LIMIT_COUNT } from "../../lib/constants.ts";
 
 export const generateResumePDFTool = tool(
   async (
@@ -15,6 +17,24 @@ export const generateResumePDFTool = tool(
   ) => {
     try {
       const userId = config?.configurable?.userId;
+      const rateLimitKey = `ratelimit:resume-generation:user:${userId}`;
+
+      const rateLimitCount = await redis.get(rateLimitKey);
+      const currentCount = rateLimitCount ? parseInt(rateLimitCount) : 0;
+      console.log(
+        "Current COunt for RATEEEEEEEEEE LIMIIIIIIIT IS : ",
+        currentCount
+      );
+      if (currentCount > RATE_LIMIT_COUNT) {
+        return JSON.stringify({
+          success: false,
+          error: "rate_limit_exceeded",
+          message:
+            `⚠️ *Rate Limit Reached*\n\n` +
+            `You've generated 5 resumes today.\n` +
+            `Try again after: after 24\n\n`
+        });
+      }
 
       console.log(
         "🔧 Generating resume PDF with template:",
@@ -41,6 +61,12 @@ export const generateResumePDFTool = tool(
           generatedAt: new Date().toISOString(),
         },
       });
+
+      const newCount = await redis.incr(rateLimitKey);
+
+      if (newCount === 1) {
+        await redis.expire(rateLimitKey, 24 * 60 * 60);
+      }
 
       return JSON.stringify({
         success: true,
@@ -126,7 +152,8 @@ INSTRUCTIONS:
 - Format: "Impact/ranking + specific metric"
 
 **certifications**: {items: [""]}
-- Format: "Name - Issuer (Year)"
+- Format: "Name - Issuer(Year) ( if any) "
+- STRICTLY DON'T ADD any fake certificates or invent certifications if not present in profile  
 
 4. CRITICAL SCHEMA REQUIREMENTS:
 - links field MUST be present and be an array for experience and projects

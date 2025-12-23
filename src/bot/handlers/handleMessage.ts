@@ -3,12 +3,50 @@ import { agent } from "../../agent/index.ts";
 import { HumanMessage } from "@langchain/core/messages";
 import { mem0 } from "../../config/memory.ts";
 import { InputFile } from "grammy";
+import { redis } from "../../config/redis.ts";
 
 export async function handleMessage(ctx: MyContext) {
   if (!ctx.message?.text || !ctx.from) return;
 
   const userId = ctx.from.id;
   const userMessage = ctx.message.text;
+
+  const cooldownKey = `cooldown:messages:${userId}`;
+  const cooldownTTL = await redis.ttl(cooldownKey);
+
+  if (cooldownTTL > 0) {
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: new Date(Date.now() + cooldownTTL * 1000),
+      isCooldown: true,
+    };
+  }
+
+  const key = `ratelimit:messages:${userId}`;
+  const limit = 20;
+  const window = 60;
+  const count = await redis.get(key);
+  const current = count ? parseInt(count) : 0;
+
+  if (current >= limit) {
+    await redis.setex(cooldownKey, 60, "1"); // 60 second cooldown
+
+    return {
+      allowed: false,
+      remaining: 0,
+      resetAt: new Date(Date.now() + 60000), // 1 minute from now
+      isCooldown: true,
+    };
+  }
+
+  const newCount = await redis.incr(key);
+  if (newCount === 1) {
+    await redis.expire(key, window);
+  }
+
+  const ttl = await redis.ttl(key);
+  const resetAt = new Date(Date.now() + ttl * 1000);
 
   let threadId = ctx.session.threadId;
 
@@ -58,7 +96,6 @@ export async function handleMessage(ctx: MyContext) {
         // Tool calls
         if (lastMsg.tool_calls?.length > 0) {
           for (const toolCall of lastMsg.tool_calls) {
-            // save_profile tool
             if (toolCall.name === "save_profile") {
               await ctx.reply("💾 Saving your profile...");
               console.log("🔧 Agent calling save_profile with:", toolCall.args);
@@ -82,21 +119,17 @@ export async function handleMessage(ctx: MyContext) {
 
       // ----- tool results -----
       if (event.tools?.messages) {
-        console.log("🛠 Processing tool results...");
         const toolMessagesArray = Array.isArray(event.tools.messages)
           ? event.tools.messages
           : Object.values(event.tools.messages);
 
-        console.log("Tool messages count:", toolMessagesArray.length);
-
         for (const toolMsg of toolMessagesArray) {
-          console.log(
-            "🛠 Tool message content (first 100 chars):",
-            String(toolMsg.content).slice(0, 100)
-          );
-
           try {
             const result = JSON.parse(String(toolMsg.content));
+
+            if (result.error == "rate_limit_exceeded") {
+              ctx.reply(result.message, { parse_mode: "Markdown" });
+            }
 
             if (result && result.success && result.pdfData && result.fileName) {
               const buffer = Buffer.from(result.pdfData, "base64");

@@ -2,6 +2,7 @@ import { type MyContext } from "../bot.ts";
 import { agent } from "../../agent/index.ts";
 import { HumanMessage } from "@langchain/core/messages";
 import { getDocumentProxy, extractText } from "unpdf";
+import { redis } from "../../config/redis.ts";
 
 type LinkPair = { text: string; url: string };
 
@@ -103,9 +104,21 @@ export const handleDocument = async (ctx: MyContext) => {
     return;
 
   const doc = ctx.message.document;
+  const userId = ctx.from.id;
 
+  const key = `ratelimit:document-upload:${userId}`;
+  const countRaw = await redis.get(key);
+  const count = Number(countRaw) || 0;
+
+  if (count > 5) {
+    return await ctx.reply(
+      `⚠️ *PDF Upload Limit Reached*\n\n` +
+        `You can only upload 5 resumes per day.\n` +
+        `Try again after 2 hours\n\n` +
+        { parse_mode: "Markdown" }
+    );
+  }
   try {
-    // Guards
     if (doc.file_size && doc.file_size > 2 * 1024 * 1024) {
       return await ctx.reply(
         "⚠️ Please send a PDF with less than 4 pages (max 2MB)."
@@ -229,6 +242,11 @@ export const handleDocument = async (ctx: MyContext) => {
       await ctx.reply(
         "✅ I've received your resume. Please provide any missing info if needed."
       );
+
+      const newCount = await redis.incr(key);
+      if (newCount == 1) {
+        await redis.expire(key, 60 * 60);
+      }
     }
   } catch (error) {
     console.error("❌ PDF error:", error);

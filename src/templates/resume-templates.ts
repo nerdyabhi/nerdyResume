@@ -21,7 +21,6 @@ function escapeLatex(text: string): string {
 
 function cleanMeta(meta: string): string {
   if (!meta) return "";
-  // Remove "Tech: " or "Tech:" prefix if present
   return meta.replace(/^Tech:\s*/i, "").trim();
 }
 
@@ -154,8 +153,6 @@ ${section.content.items
   .filter((item: any) => item && item.heading && Array.isArray(item.bullets))
   .map((item: any) => {
     const links = buildItemLinks(item.links || []);
-
-    // ✅ Clean meta to remove "Tech: " prefix and wrap in \emph for italic
     const cleanedMeta = cleanMeta(item.meta || "");
 
     return `    \\resumeProjectHeading
@@ -292,7 +289,6 @@ function getTemplate1(data: ResumeData): string {
 \\renewcommand{\\headrulewidth}{0pt}
 \\renewcommand{\\footrulewidth}{0pt}
 
-% Adjust margins
 \\addtolength{\\oddsidemargin}{-0.5in}
 \\addtolength{\\evensidemargin}{-0.5in}
 \\addtolength{\\textwidth}{1in}
@@ -305,16 +301,12 @@ function getTemplate1(data: ResumeData): string {
 \\raggedright
 \\setlength{\\tabcolsep}{0in}
 
-% Sections formatting
 \\titleformat{\\section}{
   \\vspace{-4pt}\\scshape\\raggedright\\large
 }{}{0em}{}[\\color{black}\\titlerule \\vspace{-5pt}]
 
-% Ensure that generate pdf is machine readable/ATS parsable
 \\pdfgentounicode=1
 
-%-------------------------
-% Custom commands
 \\newcommand{\\resumeItem}[1]{
   \\item\\small{
     {#1 \\vspace{-2pt}}
@@ -352,12 +344,8 @@ function getTemplate1(data: ResumeData): string {
 \\newcommand{\\resumeItemListStart}{\\begin{itemize}}
 \\newcommand{\\resumeItemListEnd}{\\end{itemize}\\vspace{-5pt}}
 
-%-------------------------------------------
-%%%%%%  RESUME STARTS HERE  %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
 \\begin{document}
 
-%----------HEADING----------
 \\begin{center}
     \\textbf{\\Huge \\scshape ${escapeLatex(
       data.header.firstName
@@ -372,7 +360,7 @@ ${sortedSections.map((section) => renderSectionT1(section)).join("\n")}
 \\end{document}`;
 }
 
-// ============= TEMPLATE 2: Modern Clean =============
+// ============= TEMPLATE 2: Modern Clean (updated to keep projects rich) =============
 
 function renderSummaryT2(section: any): string {
   if (!section.content?.text || section.content.text.trim() === "") {
@@ -425,8 +413,8 @@ ${section.content.items
       `\\textbf{${escapeLatex(item.heading)}} \\hfill \\textit{${escapeLatex(
         item.meta || ""
       )}}\\\\
-\\textit{${escapeLatex(item.subheading || "")}}
-\\begin{itemize}[label=--]
+\\textit{${escapeLatex(item.subheading || "")}}\\\\[1pt]
+\\begin{itemize}[label=\\textbullet,leftmargin=12pt]
 ${item.bullets.map((b: string) => `  \\item ${escapeLatex(b)}`).join("\n")}
 \\end{itemize}
 `
@@ -450,24 +438,23 @@ function renderProjectsT2(section: any): string {
 ${section.content.items
   .filter((item: any) => item && item.heading && Array.isArray(item.bullets))
   .map((item: any) => {
-    const links =
+    const linkLine =
       item.links && Array.isArray(item.links) && item.links.length > 0
-        ? " | " +
-          item.links
+        ? item.links
             .map(
               (l: any) =>
                 `\\href{${l.url}}{\\underline{${escapeLatex(l.label)}}}`
             )
-            .join(" | ")
+            .join(" $|$ ")
         : "";
 
-    // ✅ Clean meta to remove "Tech: " prefix (already in \textit)
     const cleanedMeta = cleanMeta(item.meta || "");
 
-    return `\\noindent\\textbf{${escapeLatex(
+    return `\\textbf{${escapeLatex(
       item.heading
-    )}}${links} \\hfill \\textit{${escapeLatex(cleanedMeta)}}
-\\begin{itemize}[label=--]
+    )}} \\hfill \\textit{${escapeLatex(cleanedMeta)}}\\\\
+${linkLine ? `${linkLine}\\\\[1pt]\n` : ""}
+\\begin{itemize}[label=\\textbullet,leftmargin=12pt]
 ${item.bullets.map((b: string) => `  \\item ${escapeLatex(b)}`).join("\n")}
 \\end{itemize}
 `;
@@ -567,40 +554,31 @@ function getTemplate2(data: ResumeData): string {
 
   return `\\documentclass[a4paper,11pt]{article}
 
-% Packages
 \\usepackage[left=0.6in,right=0.6in,top=0.5in,bottom=0.5in]{geometry}
 \\usepackage{tabularx}
 \\usepackage{enumitem}
 \\usepackage{titlesec}
 \\usepackage{hyperref}
 \\usepackage{array}
-
-% Font
 \\usepackage[T1]{fontenc}
 \\renewcommand{\\familydefault}{\\sfdefault}
 
-% Remove page numbers
 \\pagestyle{empty}
 
-% Section formatting
 \\titleformat{\\section}
   {\\large\\bfseries\\scshape}
   {}{0em}{}[\\titlerule]
 \\titlespacing{\\section}{0pt}{8pt}{4pt}
 
-% List spacing
-\\setlist[itemize]{leftmargin=15pt,itemsep=0pt,parsep=0pt,topsep=1pt}
+\\setlist[itemize]{leftmargin=15pt,itemsep=1pt,parsep=0pt,topsep=2pt}
 
-% No paragraph indent
 \\setlength{\\parindent}{0pt}
 \\setlength{\\parskip}{0pt}
 
-% Hyperlinks
 \\hypersetup{colorlinks=true,urlcolor=blue}
 
 \\begin{document}
 
-%==================== HEADER ====================
 \\begin{center}
   {\\LARGE\\bfseries ${data.header.firstName.toUpperCase()} ${data.header.lastName.toUpperCase()}}\\\\[2pt]
   \\small
