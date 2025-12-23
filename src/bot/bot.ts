@@ -6,6 +6,7 @@ import {
 import { RedisAdapter } from "@grammyjs/storage-redis";
 import { redis } from "../config/redis.ts";
 import { handleStart } from "./handlers/handleStart.ts";
+import { PDFDeliveryService } from "../services/pdfService.ts";
 
 /**
  * bot initialisation
@@ -13,6 +14,8 @@ import { handleStart } from "./handlers/handleStart.ts";
 export const bot = new Bot<
   Context & SessionFlavor<{}> & ConversationFlavor<Context & SessionFlavor<{}>>
 >(process.env.TELEGRAM_BOT_TOKEN!);
+
+new PDFDeliveryService(bot);
 
 interface SessionData {
   threadId?: string | undefined;

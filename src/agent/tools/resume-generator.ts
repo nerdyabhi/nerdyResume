@@ -5,10 +5,16 @@ import z from "zod";
 import { getResumeTemplate } from "../../templates/resume-templates.ts";
 import { resumeDataSchema } from "../../schemas/resume-data-schema.ts";
 import { eventBus, EVENTS } from "../../events/eventBus.ts";
+import type { RunnableConfig } from "@langchain/core/runnables";
 
 export const generateResumePDFTool = tool(
-  async ({ userProfile, jobDescription, templateId, userId }) => {
+  async (
+    { userProfile, jobDescription, templateId },
+    config: RunnableConfig
+  ) => {
     try {
+      const userId = config?.configurable?.userId;
+
       console.log(
         "🔧 Generating resume PDF with template:",
         templateId,
@@ -20,7 +26,7 @@ export const generateResumePDFTool = tool(
       const latexCode = getResumeTemplate(resumeData, templateId);
 
       const pdfBuffer = await latexToPDF(latexCode);
-      const base64Pdf = pdfBuffer.toString("base64");
+      // const base64Pdf = pdfBuffer.toString("base64");
       const profile = JSON.parse(userProfile);
       const fileName = `resume_${profile.name || "user"}.pdf`;
 
@@ -36,8 +42,7 @@ export const generateResumePDFTool = tool(
 
       return JSON.stringify({
         success: true,
-        message: "Resume generated successfully!",
-        fileName,
+        message: "Resume Sent successfully to the user",
       });
     } catch (error) {
       console.error("generateResumePDFTool error:", error);
@@ -59,7 +64,6 @@ export const generateResumePDFTool = tool(
         .string()
         .describe("The job description text (can be empty)"),
       templateId: z.number().describe("Template number: 1 or 2"),
-      userId: z.number().describe("UserId of the user"),
     }),
   }
 );
