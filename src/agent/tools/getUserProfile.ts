@@ -1,7 +1,7 @@
-// src/agent/tools/get-user-profile-tool.ts
+// src/agent/tools/get-user-profile-tool.js
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { profileRepository } from "../../repository/profile-repo.ts";
+import { profileRepository } from "../../repository/profile-repo.js";
 
 export const getUserProfileTool = tool(
   async (_, config) => {
@@ -36,6 +36,6 @@ Use this tool when:
 - You need to verify if profile exists before suggesting actions
 
 This returns comprehensive profile data including work experience, skills, education, projects, achievements, and profile links.`,
-    schema: z.object({}), // 
+    schema: z.object({}), //
   }
 );

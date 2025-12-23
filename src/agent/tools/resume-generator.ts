@@ -1,14 +1,14 @@
 import { tool } from "@langchain/core/tools";
-import { gpt4o } from "../../config/llm.ts";
-import { latexToPDF } from "../latex-to-pdf.ts";
+import { gpt4o } from "../../config/llm.js";
+import { latexToPDF } from "../latex-to-pdf.js";
 import z from "zod";
-import { getResumeTemplate } from "../../templates/resume-templates.ts";
-import { resumeDataSchema } from "../../schemas/resume-data-schema.ts";
-import { eventBus, EVENTS } from "../../events/eventBus.ts";
+import { getResumeTemplate } from "../../templates/resume-templates.js";
+import { resumeDataSchema } from "../../schemas/resume-data-schema.js";
+import { eventBus, EVENTS } from "../../events/eventBus.js";
 import type { RunnableConfig } from "@langchain/core/runnables";
-import { improveResumeContent } from "./resume-validtor.ts";
-import { redis } from "../../config/redis.ts";
-import { RATE_LIMIT_COUNT } from "../../lib/constants.ts";
+import { improveResumeContent } from "./resume-validtor.js";
+import { redis } from "../../config/redis.js";
+import { RATE_LIMIT_COUNT } from "../../lib/constants.js";
 
 export const generateResumePDFTool = tool(
   async (
@@ -32,7 +32,7 @@ export const generateResumePDFTool = tool(
           message:
             `⚠️ *Rate Limit Reached*\n\n` +
             `You've generated 5 resumes today.\n` +
-            `Try again after: after 24\n\n`
+            `Try again after: after 24\n\n`,
         });
       }
 

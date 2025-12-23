@@ -1,7 +1,7 @@
 import {
   ResumeGeneration,
   type ResumeMetadata,
-} from "../models/resumeGenerations-model.ts";
+} from "../models/resumeGenerations-model.js";
 import { Op } from "@sequelize/core";
 
 interface CreateResumeData {

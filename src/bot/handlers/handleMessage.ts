@@ -1,9 +1,9 @@
-import { type MyContext } from "../bot.ts";
-import { agent } from "../../agent/index.ts";
+import { type MyContext } from "../bot.js";
+import { agent } from "../../agent/index.js";
 import { HumanMessage } from "@langchain/core/messages";
-import { mem0 } from "../../config/memory.ts";
+import { mem0 } from "../../config/memory.js";
 import { InputFile } from "grammy";
-import { redis } from "../../config/redis.ts";
+import { redis } from "../../config/redis.js";
 
 export async function handleMessage(ctx: MyContext) {
   if (!ctx.message?.text || !ctx.from) return;

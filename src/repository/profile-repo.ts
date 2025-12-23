@@ -2,7 +2,7 @@ import {
   UserProfile,
   type Experience,
   type Project,
-} from "../models/profile-model.ts";
+} from "../models/profile-model.js";
 
 interface UpdateProfileData {
   fullName?: string;
@@ -184,59 +184,59 @@ export class ProfileRepository {
     profileData: any
   ): Promise<UserProfile> {
     let profile = await this.getByUserId(userId);
-  
+
     if (!profile) {
       profile = await this.create(userId);
     }
-  
+
     const updateData: any = {
       fullName: profileData.name,
       email: profileData.email,
       phone: profileData.phone,
-      summary: profileData.summary || '',
+      summary: profileData.summary || "",
       skills: profileData.skills || [],
       achievements: profileData.achievements || [],
       isComplete: true,
     };
-  
+
     if (profileData.experience && Array.isArray(profileData.experience)) {
       updateData.experiences = profileData.experience.map((exp: any) => ({
         company: exp.company,
         position: exp.role,
         startDate: exp.duration?.split(/[-–]/)[0]?.trim() || exp.duration,
         endDate: exp.duration?.split(/[-–]/)[1]?.trim() || null,
-        description: exp.description, 
+        description: exp.description,
         bullets: exp.bullets || [],
         technologies: exp.technologies || [],
       }));
     }
-  
+
     if (profileData.education && Array.isArray(profileData.education)) {
       updateData.education = profileData.education.map((edu: any) => ({
         institution: edu.institution,
         degree: edu.degree,
         duration: edu.duration,
-        gpa: edu.gpa || '', 
-        coursework: edu.coursework || [], 
-        description: edu.description || '',
+        gpa: edu.gpa || "",
+        coursework: edu.coursework || [],
+        description: edu.description || "",
       }));
     }
-  
+
     if (profileData.projects && Array.isArray(profileData.projects)) {
       updateData.projects = profileData.projects.map((proj: any) => ({
         name: proj.name,
         description: proj.description,
         tech: proj.tech || [],
-        url: proj.url || '',
-        githubUrl:proj.githubUrl,
-        bullets: proj.bullets || [], 
+        url: proj.url || "",
+        githubUrl: proj.githubUrl,
+        bullets: proj.bullets || [],
       }));
     }
-  
+
     if (profileData.activities && Array.isArray(profileData.activities)) {
       updateData.activities = profileData.activities;
     }
-  
+
     if (profileData.profileLinks) {
       updateData.profileLinks = profileData.profileLinks;
       if (profileData.profileLinks.github) {
@@ -246,10 +246,9 @@ export class ProfileRepository {
         updateData.linkedinUrl = profileData.profileLinks.linkedin;
       }
     }
-  
+
     return await profile.update(updateData);
   }
-  
 }
 
 export const profileRepository = new ProfileRepository();

@@ -1,7 +1,7 @@
-import { bot } from "./bot.ts";
-import { handleDocument } from "./handlers/handleDocument.ts";
-import { handleMessage } from "./handlers/handleMessage.ts";
-import { handleStart } from "./handlers/handleStart.ts";
+import { bot } from "./bot.js";
+import { handleDocument } from "./handlers/handleDocument.js";
+import { handleMessage } from "./handlers/handleMessage.js";
+import { handleStart } from "./handlers/handleStart.js";
 
 bot.command("start", handleStart);
 bot.on("message:text", handleMessage);

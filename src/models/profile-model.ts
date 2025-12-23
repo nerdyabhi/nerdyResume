@@ -5,7 +5,7 @@ import {
   type InferCreationAttributes,
   type CreationOptional,
 } from "@sequelize/core";
-import { sequelize } from "../config/db.ts";
+import { sequelize } from "../config/db.js";
 
 export interface Experience {
   company: string;

@@ -1,10 +1,9 @@
-import { agent } from "./agent/index.ts";
-import { UserProfile } from "./models/profile-model.ts";
-import { bot } from "./bot/index.ts";
-import { openAiLLM } from "./config/llm.ts";
+import { agent } from "./agent/index.js";
+import { UserProfile } from "./models/profile-model.js";
+import { bot } from "./bot/index.js";
+import { openAiLLM } from "./config/llm.js";
 import "dotenv/config";
-import { PDFDeliveryService } from "./services/pdfService.ts";
-
+import { PDFDeliveryService } from "./services/pdfService.js";
 
 const start = async () => {
   try {

@@ -6,7 +6,7 @@ import {
   type CreationOptional,
 } from "@sequelize/core";
 
-import { sequelize } from "../config/db.ts";
+import { sequelize } from "../config/db.js";
 
 export class User extends Model<
   InferAttributes<User>,

@@ -5,15 +5,15 @@ import {
   type InferCreationAttributes,
   type CreationOptional,
 } from "@sequelize/core";
-import { sequelize } from "../config/db.ts";
+import { sequelize } from "../config/db.js";
 
 export interface ResumeMetadata {
   tokensUsed?: number;
   costUsd?: number;
   model?: string;
-  generationDuration?: number; 
-  fileSize?: number; 
-  format?: 'pdf' | 'docx' | 'txt';
+  generationDuration?: number;
+  fileSize?: number;
+  format?: "pdf" | "docx" | "txt";
   customizations?: {
     template?: string;
     colorScheme?: string;
@@ -67,4 +67,4 @@ ResumeGeneration.init(
   }
 );
 
-ResumeGeneration.sync({force:false});
+ResumeGeneration.sync({ force: false });

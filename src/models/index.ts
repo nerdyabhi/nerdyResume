@@ -1,4 +1,4 @@
-export { User } from "./user-model.ts";
-export { UserProfile } from "./profile-model.ts";
-export { ResumeGeneration } from "./resumeGenerations-model.ts";
-export { sequelize } from "../config/db.ts";
+export { User } from "./user-model.js";
+export { UserProfile } from "./profile-model.js";
+export { ResumeGeneration } from "./resumeGenerations-model.js";
+export { sequelize } from "../config/db.js";

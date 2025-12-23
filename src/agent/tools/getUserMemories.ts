@@ -1,7 +1,7 @@
-// src/agent/tools/get-user-memories-tool.ts
+// src/agent/tools/get-user-memories-tool.js
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { mem0 } from "../../config/memory.ts";
+import { mem0 } from "../../config/memory.js";
 
 export const getUserMemoriesTool = tool(
   async ({ query, limit }, config) => {

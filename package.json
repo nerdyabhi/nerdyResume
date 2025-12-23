@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "npx ts-node ./src/index.ts"
+    "build": "tsc",
+    "start": "node ./dist/index.js",
+    "dev": "tsx ./src/index.ts"
   },
   "keywords": [],
   "author": "",
@@ -37,7 +39,8 @@
     "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@types/node": "^25.0.1"
+    "@types/node": "^25.0.1",
+    "tsx": "^4.21.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

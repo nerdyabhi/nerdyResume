@@ -1,4 +1,4 @@
-import { type ResumeData } from "../schemas/resume-data-schema.ts";
+import { type ResumeData } from "../schemas/resume-data-schema.js";
 
 // ============= ESCAPE LATEX =============
 

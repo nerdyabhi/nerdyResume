@@ -1,4 +1,4 @@
-import { User } from "../models/user-model.ts";
+import { User } from "../models/user-model.js";
 
 export class UserRepository {
   async findByTelegramId(telegramId: number): Promise<User | null> {

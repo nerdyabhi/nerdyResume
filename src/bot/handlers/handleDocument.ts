@@ -1,8 +1,8 @@
-import { type MyContext } from "../bot.ts";
-import { agent } from "../../agent/index.ts";
+import { type MyContext } from "../bot.js";
+import { agent } from "../../agent/index.js";
 import { HumanMessage } from "@langchain/core/messages";
 import { getDocumentProxy, extractText } from "unpdf";
-import { redis } from "../../config/redis.ts";
+import { redis } from "../../config/redis.js";
 
 type LinkPair = { text: string; url: string };
 

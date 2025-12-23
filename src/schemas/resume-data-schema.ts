@@ -1,4 +1,4 @@
-// src/schemas/resume-data-schema.ts
+// src/schemas/resume-data-schema.js
 import { z } from "zod";
 
 const headerSchema = z.object({

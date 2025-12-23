@@ -1,7 +1,7 @@
 import { Context } from "grammy";
-import { userRepository } from "../../repository/user-repo.ts";
-import { type MyContext } from "../bot.ts";
-import { agent } from "../../agent/index.ts";
+import { userRepository } from "../../repository/user-repo.js";
+import { type MyContext } from "../bot.js";
+import { agent } from "../../agent/index.js";
 
 export async function handleStart(ctx: Context) {
   try {

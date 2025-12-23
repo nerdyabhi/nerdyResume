@@ -4,9 +4,9 @@ import {
   type ConversationFlavor,
 } from "@grammyjs/conversations";
 import { RedisAdapter } from "@grammyjs/storage-redis";
-import { redis } from "../config/redis.ts";
-import { handleStart } from "./handlers/handleStart.ts";
-import { PDFDeliveryService } from "../services/pdfService.ts";
+import { redis } from "../config/redis.js";
+import { handleStart } from "./handlers/handleStart.js";
+import { PDFDeliveryService } from "../services/pdfService.js";
 
 /**
  * bot initialisation

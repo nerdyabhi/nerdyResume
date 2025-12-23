@@ -1,5 +1,5 @@
-// src/services/pdfService.ts
-import { eventBus, EVENTS } from "../events/eventBus.ts";
+// src/services/pdfService.js
+import { eventBus, EVENTS } from "../events/eventBus.js";
 import { InputFile, Context } from "grammy";
 import type { Bot } from "grammy";
 
@@ -24,7 +24,6 @@ export class PDFDeliveryService<C extends Context = Context> {
     metadata: any;
   }) {
     try {
-    
       await this.bot.api.sendDocument(
         data.userId,
         new InputFile(data.buffer, data.fileName),

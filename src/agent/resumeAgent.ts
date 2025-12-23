@@ -1,12 +1,11 @@
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
-import { openAiLLM } from "../config/llm.ts";
-import { getUserProfileTool } from "./tools/getUserProfile.ts";
-import { generateResumePDFTool } from "./tools/resume-generator.ts";
+import { openAiLLM } from "../config/llm.js";
+import { getUserProfileTool } from "./tools/getUserProfile.js";
+import { generateResumePDFTool } from "./tools/resume-generator.js";
 import { trimMessages } from "@langchain/core/messages";
 
 const resumeMemory = new MemorySaver();
-
 
 export const resumeAgent = createReactAgent({
   llm: openAiLLM,

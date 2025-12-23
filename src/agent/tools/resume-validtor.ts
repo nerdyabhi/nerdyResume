@@ -1,8 +1,8 @@
 import {
   resumeDataSchema,
   type ResumeData,
-} from "../../schemas/resume-data-schema.ts";
-import { gpt4o } from "../../config/llm.ts";
+} from "../../schemas/resume-data-schema.js";
+import { gpt4o } from "../../config/llm.js";
 
 export async function improveResumeContent(
   data: ResumeData

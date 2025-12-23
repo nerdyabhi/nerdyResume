@@ -1,10 +1,10 @@
 import { createReactAgent } from "@langchain/langgraph/prebuilt";
 import { MemorySaver } from "@langchain/langgraph";
-import { openAiLLM } from "../config/llm.ts";
-import { saveProfileTool } from "./tools/SaveProfileTool.ts";
-import { getUserProfileTool } from "./tools/getUserProfile.ts";
-import { getUserMemoriesTool } from "./tools/getUserMemories.ts";
-import { generateResumePDFTool } from "./tools/resume-generator.ts";
+import { openAiLLM } from "../config/llm.js";
+import { saveProfileTool } from "./tools/SaveProfileTool.js";
+import { getUserProfileTool } from "./tools/getUserProfile.js";
+import { getUserMemoriesTool } from "./tools/getUserMemories.js";
+import { generateResumePDFTool } from "./tools/resume-generator.js";
 import { trimMessages } from "@langchain/core/messages";
 
 const memory = new MemorySaver();

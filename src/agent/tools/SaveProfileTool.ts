@@ -1,6 +1,6 @@
 import { tool } from "@langchain/core/tools";
 import { z } from "zod";
-import { profileRepository } from "../../repository/profile-repo.ts";
+import { profileRepository } from "../../repository/profile-repo.js";
 import { type RunnableConfig } from "@langchain/core/runnables";
 
 export const saveProfileTool = tool(

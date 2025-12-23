@@ -1,5 +1,5 @@
 import { Context } from "grammy";
-import { userRepository } from "../../repository/user-repo.ts";
+import { userRepository } from "../../repository/user-repo.js";
 
 export async function handleStart(ctx: Context) {
   try {
