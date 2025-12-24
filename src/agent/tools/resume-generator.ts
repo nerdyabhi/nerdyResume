@@ -21,7 +21,7 @@ export const generateResumePDFTool = tool(
 
       const rateLimitCount = await redis.get(rateLimitKey);
       const currentCount = rateLimitCount ? parseInt(rateLimitCount) : 0;
-  
+
       if (currentCount > RATE_LIMIT_COUNT) {
         return JSON.stringify({
           success: false,
@@ -33,14 +33,32 @@ export const generateResumePDFTool = tool(
         });
       }
 
-   
+      eventBus.emit(EVENTS.RESUME_PROGRESS, {
+        userId,
+        message: "📄 Reading Your Profile and  description...",
+      });
 
       const resumeData = await generateResumeData(userProfile, jobDescription);
+
+      eventBus.emit(EVENTS.RESUME_PROGRESS, {
+        userId,
+        message: "✨ Optimizing with ATS-friendly keywords...",
+      });
+
       const improvedResumeData = await improveResumeContent(resumeData);
+
+      eventBus.emit(EVENTS.RESUME_PROGRESS, {
+        userId,
+        message: "🎨 Formatting your resume...",
+      });
+
       const latexCode = getResumeTemplate(improvedResumeData, templateId);
 
+      eventBus.emit(EVENTS.RESUME_PROGRESS, {
+        userId,
+        message: "📝 Generating PDF document...",
+      });
       const pdfBuffer = await latexToPDF(latexCode);
-      // const base64Pdf = pdfBuffer.toString("base64");
       const profile = JSON.parse(userProfile);
       const fileName = `resume_${profile.name || "user"}.pdf`;
 

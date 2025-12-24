@@ -51,13 +51,6 @@ const resumeWorker = new Worker(
                 await bot.api.sendMessage(chatId, "💾 Saving your profile...");
                 toolCall.args.userId = userId;
               }
-
-              if (toolCall.name === "generate_resume_pdf") {
-                await bot.api.sendMessage(
-                  chatId,
-                  "📄 Generating your tailored resume... This may take 30–60 seconds."
-                );
-              }
             }
           }
         }
@@ -70,7 +63,14 @@ const resumeWorker = new Worker(
 
           for (const toolMsg of toolMessagesArray) {
             try {
-              const result = JSON.parse(String(toolMsg.content));
+              let result;
+
+              try {
+                result = JSON.parse(toolMsg.content);
+              } catch (parseError) {
+                console.warn(`⚠️  Non-JSON tool response: ${toolMsg.content}`);
+                continue;
+              }
 
               if (result.error === "rate_limit_exceeded") {
                 await bot.api.sendMessage(chatId, result.message, {

@@ -18,7 +18,7 @@ export const saveProfileTool = tool(
 
       return JSON.stringify({
         success: true,
-        message: `✅ *Profile saved successfully!*
+        message: `*Profile saved successfully!*
 
 Saved:
 • ${profile.experience?.length || 0} work experiences
@@ -26,7 +26,7 @@ Saved:
 • ${profile.activities?.length || 0} activities
 • ${profile.achievements?.length || 0} achievements
 
-You can now generate resumes with /resume`,
+Should i create resume now ? `,
       });
     } catch (error) {
       console.error("❌ saveProfileTool error:", error);
