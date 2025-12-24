@@ -83,7 +83,7 @@ export const generateResumePDFTool = tool(
   {
     name: "generate_resume_pdf",
     description:
-      "Generate a tailored resume PDF. You MUST pass templateId (1-5).",
+      "Generate a tailored resume PDF. You MUST pass templateId(1-3) if user asks for double-layout template id = 3 .",
     schema: z.object({
       userProfile: z
         .string()

@@ -603,7 +603,305 @@ ${sortedSections.map((section) => renderSectionT2(section)).join("\n")}
 \\end{document}`;
 }
 
-// ============= EXPORT =============
+// ============= TEMPLATE 3: ModernCV Two-Column =============
+
+function renderSummaryT3(section: any): string {
+  if (!section?.content?.text?.trim()) return "";
+  return `
+\\section{SUMMARY}
+${escapeLatex(section.content.text)}
+`;
+}
+
+function renderExperienceT3(section: any): string {
+  if (!section?.content?.items?.length) return "";
+
+  return `
+\\section{EXPERIENCE}
+
+${section.content.items
+  .map((item: any) => {
+    const company = escapeLatex(item.subheading || "");
+    const role = escapeLatex(item.heading || "");
+    const meta = (item.meta || "").trim();
+
+    // Parse meta like "Mar 2025 – May 2025 · Bangalore, India"
+    const [durationRaw, locationRaw] = meta.split("·");
+    const duration = escapeLatex((durationRaw || "").trim());
+    const location = escapeLatex((locationRaw || "").trim());
+
+    // Group bullets by bold headings if they exist
+    const groupedContent: string[] = [];
+    let currentGroup: { heading: string; bullets: string[] } | null = null;
+
+    if (Array.isArray(item.bullets)) {
+      item.bullets.forEach((bullet: string) => {
+        const boldMatch = bullet.match(/^\*\*(.*?)\*\*/);
+
+        if (boldMatch) {
+          if (currentGroup) {
+            groupedContent.push(formatBulletGroup(currentGroup));
+          }
+          currentGroup = {
+            heading: boldMatch[1] ?? "",
+            bullets: [],
+          };
+          // Add remaining text after bold as first bullet if exists
+          const remaining = bullet.substring(boldMatch[0].length).trim();
+          if (remaining) {
+            currentGroup.bullets.push(remaining);
+          }
+        } else if (currentGroup) {
+          // Add to current group
+          currentGroup.bullets.push(bullet);
+        } else {
+          // No group, treat as standalone
+          groupedContent.push(`\\begin{itemize}[itemsep=0pt,parsep=0pt,topsep=1pt]
+  \\item ${escapeLatex(bullet)}
+\\end{itemize}`);
+        }
+      });
+
+      // Add final group if exists
+      if (currentGroup) {
+        groupedContent.push(formatBulletGroup(currentGroup));
+      }
+    }
+
+    return `\\experienceentry{${company}}{${role}}{${duration}}{${location}}
+
+${groupedContent.join("\n\\vspace{0.5mm}\n\n")}
+\\vspace{1.5mm}
+`;
+  })
+  .join("\n")}
+`;
+}
+
+function formatBulletGroup(group: {
+  heading: string;
+  bullets: string[];
+}): string {
+  if (group.bullets.length === 0) {
+    return `\\textbf{${escapeLatex(group.heading)}}`;
+  }
+
+  return `\\textbf{${escapeLatex(group.heading)}}
+\\begin{itemize}[itemsep=0pt,parsep=0pt,topsep=1pt]
+${group.bullets.map((b: string) => `    \\item ${escapeLatex(b)}`).join("\n")}
+\\end{itemize}`;
+}
+
+function renderProjectsT3(section: any): string {
+  if (!section?.content?.items?.length) return "";
+
+  return `
+\\section{PROJECTS}
+
+${section.content.items
+  .map((item: any) => {
+    const title = escapeLatex(item.heading || "");
+    const tech = escapeLatex(item.meta || "");
+    const bullets =
+      Array.isArray(item.bullets) && item.bullets.length
+        ? `\\begin{itemize}[itemsep=0pt,parsep=0pt,topsep=1pt]
+${item.bullets.map((b: string) => `    \\item ${escapeLatex(b)}`).join("\n")}
+\\end{itemize}`
+        : "";
+
+    return `\\projectentry{${title}}{${tech}}
+
+${bullets}
+\\vspace{0.5mm}
+`;
+  })
+  .join("\n")}
+`;
+}
+
+function renderSkillsT3(section: any): string {
+  if (!section?.content?.categories?.length) return "";
+
+  return `
+\\section{SKILLS}
+
+${section.content.categories
+  .map((cat: any) => {
+    if (!cat?.name || !Array.isArray(cat.items) || !cat.items.length) return "";
+    const skills = cat.items.map((s: string) => escapeLatex(s)).join(", ");
+    return `\\textbf{${escapeLatex(cat.name)}:} ${skills}
+
+\\vspace{2mm}
+`;
+  })
+  .join("\n")}
+`;
+}
+
+function renderEducationT3(section: any): string {
+  if (!section?.content?.items?.length) return "";
+
+  return `
+\\section{EDUCATION}
+${section.content.items
+  .map((edu: any) => {
+    const degree = escapeLatex(edu.degree || "");
+    const inst = escapeLatex(edu.institution || "");
+    const duration = escapeLatex(edu.duration || "");
+
+    const gpaLine =
+      edu.gpa && edu.gpa.trim() ? `CGPA: ${escapeLatex(edu.gpa)}` : "";
+    const coursework =
+      edu.details && Array.isArray(edu.details) && edu.details.length
+        ? `Coursework: ${edu.details
+            .map((d: string) => escapeLatex(d))
+            .join(", ")}`
+        : "";
+
+    return `\\educationentry{${degree}}{${inst}}{${duration}}
+${gpaLine ? `${gpaLine} \\\\\n` : ""}${coursework ? `${coursework}\n` : ""}\\par
+\\vspace{2.0mm}
+`;
+  })
+  .join("")}
+`;
+}
+
+function renderAchievementsT3(section: any): string {
+  if (!section?.content?.items?.length) return "";
+
+  return `
+\\section{ACHIEVEMENTS}
+\\begin{itemize}[itemsep=0pt,parsep=0pt,topsep=1pt]
+${section.content.items
+  .map((item: string) => `    \\item ${escapeLatex(item)}`)
+  .join("\n")}
+\\end{itemize}
+`;
+}
+
+function renderSectionT3(section: any): string {
+  if (!section || !section.visible) return "";
+
+  switch (section.type) {
+    case "summary":
+      return renderSummaryT3(section);
+    case "experience":
+      return renderExperienceT3(section);
+    case "projects":
+      return renderProjectsT3(section);
+    case "skills":
+      return renderSkillsT3(section);
+    case "education":
+      return renderEducationT3(section);
+    case "achievements":
+      return renderAchievementsT3(section);
+    default:
+      return "";
+  }
+}
+
+function getTemplate3(data: ResumeData): string {
+  const sections = [...data.sections].sort((a, b) => a.order - b.order);
+
+  // Left column: Experience + Projects + Achievements
+  const leftTypes = new Set(["experience", "projects", "achievements"]);
+  const leftColumn = sections
+    .filter((s) => leftTypes.has(s.type))
+    .map((s) => renderSectionT3(s))
+    .join("\n");
+
+  // Right column: Summary + Skills + Education
+  const rightTypes = new Set(["summary", "skills", "education"]);
+  const rightColumn = sections
+    .filter((s) => rightTypes.has(s.type))
+    .map((s) => renderSectionT3(s))
+    .join("\n");
+
+  // Build GitHub link
+  const githubUsername = data.header.github
+    ? data.header.github.split("/").pop()?.trim() || ""
+    : "";
+  const githubLink = githubUsername
+    ? `\\faGithub\\enspace \\href{${
+        data.header.github
+      }}{github.com/${escapeLatex(githubUsername)}}`
+    : "";
+
+  const fullName = `${data.header.firstName || ""} ${
+    data.header.lastName || ""
+  }`.trim();
+
+  return `\\documentclass[10pt,a4paper]{moderncv}
+\\moderncvtheme[blue]{banking}
+\\nopagenumbers{}
+
+\\usepackage[T1]{fontenc}
+\\usepackage[utf8]{inputenc}
+\\usepackage[scale=0.92]{geometry}
+\\usepackage{tabularx}
+\\usepackage{fontawesome5}
+\\usepackage{enumitem}
+
+% Macros
+\\renewcommand*{\\labelitemi}{-}
+
+\\newcolumntype{L}{>{\\raggedright\\arraybackslash}X}
+\\newcolumntype{C}{>{\\centering\\arraybackslash}X}
+\\newcolumntype{R}{>{\\raggedleft\\arraybackslash}X}
+
+\\newcommand*{\\experienceentry}[5][1.5mm]{
+    \\subsection{#2} \\vspace{-1.5mm}
+    \\begin{tabularx}{\\textwidth}{LR}
+        {\\itshape #3} & {\\itshape #4, #5}
+    \\end{tabularx}
+    \\par\\addvspace{#1}
+}
+
+\\newcommand*{\\projectentry}[3][1.5mm]{
+    \\subsection{#2} \\vspace{-1.5mm}
+    {\\itshape #3}
+    \\par\\addvspace{#1}
+}
+
+\\newcommand*{\\educationentry}[4][0.5mm]{
+    \\begin{tabularx}{\\textwidth}{LR}
+        {\\bfseries #3} & {\\bfseries #4} \\\\
+    \\end{tabularx}
+    {\\itshape #2}
+    \\par\\addvspace{#1}
+}
+
+% Personal Data
+\\firstname{${escapeLatex(data.header.firstName || "")}}
+\\familyname{${escapeLatex(data.header.lastName || "")}}
+
+\\begin{document}
+
+% CUSTOM HEADER (no page break)
+\\begin{center}
+    {\\Huge\\color{color1}\\textbf{${escapeLatex(fullName)}}}\\\\[3pt]
+    \\vspace{2mm}
+    \\begin{tabularx}{\\textwidth}{C C C}
+        \\emailsymbol\\enspace \\emaillink{${escapeLatex(data.header.email)}} & 
+        \\mobilephonesymbol\\enspace ${escapeLatex(data.header.phone || "")} & 
+        ${githubLink}
+    \\end{tabularx}
+\\end{center}
+\\vspace{3mm}
+
+% Two Column Layout
+\\begin{minipage}[t]{0.62\\textwidth}
+${leftColumn}
+\\end{minipage}
+\\hfill
+\\begin{minipage}[t]{0.35\\textwidth}
+${rightColumn}
+\\end{minipage}
+
+\\end{document}
+`;
+}
 
 export function getResumeTemplate(
   data: ResumeData,
@@ -614,9 +912,15 @@ export function getResumeTemplate(
       return getTemplate1(data);
     case 2:
       return getTemplate2(data);
+    case 3:
+      return getTemplate3(data);
     default:
-      throw new Error(`Template ${templateId} not found. Available: 1, 2`);
+      throw new Error(`Template ${templateId} not found. Available: 1, 2, 3`);
   }
 }
 
-export { getTemplate1 as template1, getTemplate2 as template2 };
+export {
+  getTemplate1 as template1,
+  getTemplate2 as template2,
+  getTemplate3 as template3,
+};
