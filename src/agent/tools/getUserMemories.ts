@@ -15,7 +15,6 @@ export const getUserMemoriesTool = tool(
     }
 
     try {
-      console.log(`🔍 Searching memories for user ${userId}: "${query}"`);
 
       const response = await mem0.search(query, {
         userId: userId.toString(),

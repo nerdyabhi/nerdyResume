@@ -14,9 +14,7 @@ function extractLatex(raw: string): string {
 }
 
 export async function latexToPDF(latexCode: string): Promise<Buffer> {
-  console.log("Got LatexToPdf call with ");
-  console.log(latexCode);
-  console.log("--------------------");
+
 
   const fixedCode = extractLatex(latexCode);
   const form = new FormData();
@@ -34,7 +32,6 @@ export async function latexToPDF(latexCode: string): Promise<Buffer> {
   const ab = await res.arrayBuffer();
   const buf = Buffer.from(ab);
 
-  console.log("latexToPDF status:", res.status, "ct:", ct, "len:", buf.length);
 
   if (!ct.includes("application/pdf") || buf.length < 1000) {
     const text = buf.toString("utf8");

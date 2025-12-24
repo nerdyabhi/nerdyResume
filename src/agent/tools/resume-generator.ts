@@ -21,10 +21,7 @@ export const generateResumePDFTool = tool(
 
       const rateLimitCount = await redis.get(rateLimitKey);
       const currentCount = rateLimitCount ? parseInt(rateLimitCount) : 0;
-      console.log(
-        "Current COunt for RATEEEEEEEEEE LIMIIIIIIIT IS : ",
-        currentCount
-      );
+  
       if (currentCount > RATE_LIMIT_COUNT) {
         return JSON.stringify({
           success: false,
@@ -36,12 +33,7 @@ export const generateResumePDFTool = tool(
         });
       }
 
-      console.log(
-        "🔧 Generating resume PDF with template:",
-        templateId,
-        "For userId : ",
-        userId
-      );
+   
 
       const resumeData = await generateResumeData(userProfile, jobDescription);
       const improvedResumeData = await improveResumeContent(resumeData);
@@ -175,6 +167,5 @@ Return valid JSON with ALL sections and ALL required fields.`;
   const structuredLLM = gpt4o.withStructuredOutput(resumeDataSchema);
   const resumeData = await structuredLLM.invoke(prompt);
 
-  console.log("✅ Resume generated with tailored content");
   return resumeData;
 }

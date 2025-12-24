@@ -32,7 +32,6 @@ export class PDFDeliveryService<C extends Context = Context> {
         }
       );
 
-      console.log(`✅ PDF delivered successfully to ${data.userId}`);
     } catch (error) {
       console.error(`❌ Failed to deliver PDF to ${data.userId}:`, error);
     }

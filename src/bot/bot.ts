@@ -49,7 +49,6 @@ bot.use(async (ctx, next) => {
 
   if (ttl > 0) {
     // ✅ Silently ignore OR send a single warning
-    console.log(`⏳ User ${userId} is in cooldown (${ttl}s remaining)`);
 
     const lastWarning = await redis.get(`${cooldownKey}:warned`);
     if (!lastWarning) {
