@@ -934,7 +934,7 @@ function getTemplate3(data: ResumeData): string {
 
 \\usepackage[T1]{fontenc}
 \\usepackage[utf8]{inputenc}
-\\usepackage[scale=0.90]{geometry}
+\\usepackage[scale=0.95]{geometry}
 \\usepackage{tabularx}
 \\usepackage{fontawesome5}
 \\usepackage{enumitem}
@@ -956,21 +956,21 @@ function getTemplate3(data: ResumeData): string {
 \\newcolumntype{C}{>{\\centering\\arraybackslash}X}
 \\newcolumntype{R}{>{\\raggedleft\\arraybackslash}X}
 
-\\newcommand*{\\experienceentry}[5][0.8mm]{
-    \\subsection{#2} \\vspace{-1.5mm}
+\\newcommand*{\\experienceentry}[5][0.5mm]{
+    \\subsection{#2} \\vspace{-1.8mm}
     \\begin{tabularx}{\\textwidth}{LR}
-        {\\itshape #3} & {\\itshape #4, #5}
+        {\\itshape\\small #3} & {\\itshape\\small #4, #5}
     \\end{tabularx}
     \\par\\addvspace{#1}
 }
 
-\\newcommand*{\\projectentry}[3][0.8mm]{
-    \\subsection{#2} \\vspace{-1.5mm}
+\\newcommand*{\\projectentry}[3][0.5mm]{
+    \\subsection{#2} \\vspace{-1.8mm}
     {\\small\\itshape #3}
     \\par\\addvspace{#1}
 }
 
-\\newcommand*{\\educationentry}[4][0.5mm]{
+\\newcommand*{\\educationentry}[4][0.3mm]{
     \\begin{tabularx}{\\textwidth}{LR}
         {\\bfseries #3} & {\\bfseries #4} \\\\
     \\end{tabularx}
@@ -986,23 +986,24 @@ function getTemplate3(data: ResumeData): string {
 
 % CUSTOM HEADER
 \\begin{center}
-    {\\Huge\\color{color1}\\textbf{${escapeLatex(fullName)}}}\\\\[3pt]
-    \\vspace{1.5mm}
+    {\\Huge\\color{color1}\\textbf{${escapeLatex(fullName)}}}\\\\[2pt]
+    \\vspace{1mm}
     \\begin{tabularx}{\\textwidth}{${firstRowLinks.map(() => "C").join(" ")}}
         ${firstRowLinks.join(" & ")}
     \\end{tabularx}${
       secondRowLinks.length > 0
         ? `
-    \\vspace{1mm}
+    \\vspace{0.8mm}
     \\begin{tabularx}{\\textwidth}{${secondRowLinks.map(() => "C").join(" ")}}
         ${secondRowLinks.join(" & ")}
     \\end{tabularx}`
         : ""
     }
 \\end{center}
-\\vspace{1.5mm}
+\\vspace{1mm}
 
-% Two Column Layout
+% Two Column Layout - PREVENT PAGE BREAKS
+\\begin{samepage}
 \\begin{minipage}[t]{0.62\\textwidth}
 ${leftColumn}
 \\end{minipage}
@@ -1010,6 +1011,7 @@ ${leftColumn}
 \\begin{minipage}[t]{0.35\\textwidth}
 ${rightColumn}
 \\end{minipage}
+\\end{samepage}
 
 \\end{document}
 `;
