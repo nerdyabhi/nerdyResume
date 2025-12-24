@@ -701,21 +701,89 @@ function renderProjectsT3(section: any): string {
 ${section.content.items
   .map((item: any) => {
     const title = escapeLatex(item.heading || "");
-    const tech = escapeLatex(item.meta || "");
+    const tech = cleanMeta(escapeLatex(item.meta || ""));
+
+    // Format links inline after project name
+    const linkLine =
+      item.links && Array.isArray(item.links) && item.links.length > 0
+        ? ` $|$ ${item.links
+            .map((l: any) => {
+              const displayText = l.label || "Link";
+              const labelLower = displayText.toLowerCase();
+              const urlLower = (l.url || "").toLowerCase();
+
+              let icon = "";
+              if (
+                labelLower.includes("github") ||
+                urlLower.includes("github")
+              ) {
+                icon = "\\faGithub\\ ";
+              } else if (
+                labelLower.includes("live") ||
+                labelLower.includes("demo") ||
+                labelLower.includes("site")
+              ) {
+                icon = "\\faLink\\ ";
+              } else if (
+                labelLower.includes("video") ||
+                urlLower.includes("youtube")
+              ) {
+                icon = "\\faYoutube\\ ";
+              }
+
+              return `${icon}\\href{${
+                l.url
+              }}{\\textcolor{blue}{\\small\\textbf{${escapeLatex(
+                displayText
+              )}}}}`;
+            })
+            .join(" $|$ ")}`
+        : "";
+
     const bullets =
       Array.isArray(item.bullets) && item.bullets.length
-        ? `\\begin{itemize}[itemsep=0pt,parsep=0pt,topsep=1pt]
+        ? `\\begin{itemize}[itemsep=0pt,parsep=0pt,topsep=1pt,leftmargin=12pt]
 ${item.bullets.map((b: string) => `    \\item ${escapeLatex(b)}`).join("\n")}
 \\end{itemize}`
         : "";
 
-    return `\\projectentry{${title}}{${tech}}
-
+    return `\\subsection{${title}${linkLine}} \\vspace{-1mm}
+{\\small\\textit{${tech}}}
+\\par\\addvspace{0.8mm}
 ${bullets}
-\\vspace{0.5mm}
+\\vspace{0.8mm}
 `;
   })
   .join("\n")}
+`;
+}
+
+function renderAchievementsT3(section: any): string {
+  if (!section?.content?.items?.length) return "";
+
+  return `
+\\section{ACHIEVEMENTS}
+\\begin{itemize}[itemsep=2pt,parsep=0pt,topsep=2pt,leftmargin=12pt]
+${section.content.items
+  .map((item: string) => {
+    // Replace URLs with simple "Link" text
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const parts = item.split(urlRegex);
+
+    const formatted = parts
+      .map((part) => {
+        if (part.match(/^https?:\/\//)) {
+          return `\\href{${part}}{\\textcolor{blue}{\\small\\textbf{Link}}}`;
+        } else {
+          return escapeLatex(part);
+        }
+      })
+      .join("");
+
+    return `    \\item ${formatted}`;
+  })
+  .join("\n")}
+\\end{itemize}
 `;
 }
 
@@ -767,19 +835,6 @@ ${gpaLine ? `${gpaLine} \\\\\n` : ""}${coursework ? `${coursework}\n` : ""}\\par
 `;
 }
 
-function renderAchievementsT3(section: any): string {
-  if (!section?.content?.items?.length) return "";
-
-  return `
-\\section{ACHIEVEMENTS}
-\\begin{itemize}[itemsep=0pt,parsep=0pt,topsep=1pt]
-${section.content.items
-  .map((item: string) => `    \\item ${escapeLatex(item)}`)
-  .join("\n")}
-\\end{itemize}
-`;
-}
-
 function renderSectionT3(section: any): string {
   if (!section || !section.visible) return "";
 
@@ -818,15 +873,56 @@ function getTemplate3(data: ResumeData): string {
     .map((s) => renderSectionT3(s))
     .join("\n");
 
-  // Build GitHub link
-  const githubUsername = data.header.github
-    ? data.header.github.split("/").pop()?.trim() || ""
-    : "";
-  const githubLink = githubUsername
-    ? `\\faGithub\\enspace \\href{${
+  // Build header links dynamically
+  const headerLinks: string[] = [];
+
+  // Email (always present)
+  headerLinks.push(
+    `\\emailsymbol\\enspace \\emaillink{${escapeLatex(data.header.email)}}`
+  );
+
+  // Phone
+  if (data.header.phone?.trim()) {
+    headerLinks.push(
+      `\\mobilephonesymbol\\enspace ${escapeLatex(data.header.phone)}`
+    );
+  }
+
+  // GitHub
+  if (data.header.github?.trim()) {
+    const githubUsername = data.header.github.split("/").pop()?.trim() || "";
+    headerLinks.push(
+      `\\faGithub\\enspace \\href{${
         data.header.github
       }}{github.com/${escapeLatex(githubUsername)}}`
-    : "";
+    );
+  }
+
+  // LinkedIn
+  if (data.header.linkedin?.trim()) {
+    const linkedinHandle = data.header.linkedin.split("/").pop()?.trim() || "";
+    headerLinks.push(
+      `\\faLinkedin\\enspace \\href{${
+        data.header.linkedin
+      }}{linkedin.com/in/${escapeLatex(linkedinHandle)}}`
+    );
+  }
+
+  // Portfolio
+  if (data.header.portfolio?.trim()) {
+    const portfolioDisplay = data.header.portfolio
+      .replace(/https?:\/\/(www\.)?/, "")
+      .split("/")[0];
+    headerLinks.push(
+      `\\faGlobe\\enspace \\href{${data.header.portfolio}}{${escapeLatex(
+        portfolioDisplay || "portfolio"
+      )}}`
+    );
+  }
+
+  // Distribute links across two rows for better spacing
+  const firstRowLinks = headerLinks.slice(0, 3);
+  const secondRowLinks = headerLinks.slice(3);
 
   const fullName = `${data.header.firstName || ""} ${
     data.header.lastName || ""
@@ -838,10 +934,20 @@ function getTemplate3(data: ResumeData): string {
 
 \\usepackage[T1]{fontenc}
 \\usepackage[utf8]{inputenc}
-\\usepackage[scale=0.92]{geometry}
+\\usepackage[scale=0.90]{geometry}
 \\usepackage{tabularx}
 \\usepackage{fontawesome5}
 \\usepackage{enumitem}
+\\usepackage{xcolor}
+\\usepackage{hyperref}
+
+% Configure hyperlinks
+\\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    urlcolor=blue,
+    breaklinks=true
+}
 
 % Macros
 \\renewcommand*{\\labelitemi}{-}
@@ -850,7 +956,7 @@ function getTemplate3(data: ResumeData): string {
 \\newcolumntype{C}{>{\\centering\\arraybackslash}X}
 \\newcolumntype{R}{>{\\raggedleft\\arraybackslash}X}
 
-\\newcommand*{\\experienceentry}[5][1.5mm]{
+\\newcommand*{\\experienceentry}[5][0.8mm]{
     \\subsection{#2} \\vspace{-1.5mm}
     \\begin{tabularx}{\\textwidth}{LR}
         {\\itshape #3} & {\\itshape #4, #5}
@@ -858,9 +964,9 @@ function getTemplate3(data: ResumeData): string {
     \\par\\addvspace{#1}
 }
 
-\\newcommand*{\\projectentry}[3][1.5mm]{
+\\newcommand*{\\projectentry}[3][0.8mm]{
     \\subsection{#2} \\vspace{-1.5mm}
-    {\\itshape #3}
+    {\\small\\itshape #3}
     \\par\\addvspace{#1}
 }
 
@@ -878,17 +984,23 @@ function getTemplate3(data: ResumeData): string {
 
 \\begin{document}
 
-% CUSTOM HEADER (no page break)
+% CUSTOM HEADER
 \\begin{center}
     {\\Huge\\color{color1}\\textbf{${escapeLatex(fullName)}}}\\\\[3pt]
-    \\vspace{2mm}
-    \\begin{tabularx}{\\textwidth}{C C C}
-        \\emailsymbol\\enspace \\emaillink{${escapeLatex(data.header.email)}} & 
-        \\mobilephonesymbol\\enspace ${escapeLatex(data.header.phone || "")} & 
-        ${githubLink}
-    \\end{tabularx}
+    \\vspace{1.5mm}
+    \\begin{tabularx}{\\textwidth}{${firstRowLinks.map(() => "C").join(" ")}}
+        ${firstRowLinks.join(" & ")}
+    \\end{tabularx}${
+      secondRowLinks.length > 0
+        ? `
+    \\vspace{1mm}
+    \\begin{tabularx}{\\textwidth}{${secondRowLinks.map(() => "C").join(" ")}}
+        ${secondRowLinks.join(" & ")}
+    \\end{tabularx}`
+        : ""
+    }
 \\end{center}
-\\vspace{3mm}
+\\vspace{1.5mm}
 
 % Two Column Layout
 \\begin{minipage}[t]{0.62\\textwidth}

@@ -137,7 +137,7 @@ INSTRUCTIONS:
 - heading: Project Name | subheading: one-line description | meta: "Tech: ..."
 - bullets: 2-4 bullets with technical complexity and impact
 - links: ALWAYS include as array (can be empty []) - format: [{label: "GitHub", url: "..."}, {label: "Live Demo", url: "..."}]
-- Include GitHub/live demo links if available
+- Include GitHub/live links if available
 
 **skills**: {categories: [{name, items}]}
 - 4-6 categories: "Programming Languages", "Backend Technologies", "Frontend Technologies", "DevOps & Cloud", "Tools & Technologies"
