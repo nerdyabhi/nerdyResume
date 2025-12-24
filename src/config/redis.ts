@@ -14,12 +14,13 @@ export const redis = new Redis({
   tls: {
     rejectUnauthorized: false,
   },
+
   connectTimeout: 10000,
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
     return delay;
   },
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
   enableReadyCheck: false,
   lazyConnect: true,
 });
