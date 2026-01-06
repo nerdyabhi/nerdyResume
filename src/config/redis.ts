@@ -1,33 +1,25 @@
 import { Redis } from "ioredis";
 import "dotenv/config";
 
-// For Upstash, use the REST URL with proper configuration
-const redisUrl = process.env.REDIS_REST_URL!;
+// const redisUrl = process.env.REDIS_REST_URL!;
 
-// Parse the URL to get host and port
-const url = new URL(redisUrl);
+// const url = new URL(redisUrl);
 
+const { REDIS_HOST, REDIS_PORT, REDIS_PASSWORD } = process.env;
 export const redis = new Redis({
-  host: url.hostname,
-  port: parseInt(url.port || "6379"),
-  password: process.env.REDIS_REST_TOKEN!,
-  tls: {
-    rejectUnauthorized: false,
-  },
+  host: REDIS_HOST!,
+  port: parseInt(REDIS_PORT!),
+  password: REDIS_PASSWORD!,
 
-  connectTimeout: 10000,
   retryStrategy: (times: number) => {
     const delay = Math.min(times * 50, 2000);
     return delay;
   },
   maxRetriesPerRequest: null,
-  enableReadyCheck: false,
-  lazyConnect: true,
 });
 
-// Connect explicitly
-redis.connect().catch((err) => {
-  console.error("❌ Failed to connect to Redis:", err);
+redis.connect().catch((err: any) => {
+  console.error("❌ Failed to connect to Redis:", err.message);
 });
 
 redis.on("connect", () => {
